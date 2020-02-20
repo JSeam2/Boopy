@@ -9,3 +9,5 @@ Byzantine Fault Tolerant Distributed Hash Table implemented in Golang
 1. [Donut: A Robust Distributed Hash Table based on Chord](http://alevy.github.io/donut/donut.pdf)
 
 1. [Sample chord implementation](https://github.com/arriqaaq/chord)
+
+1. [Toy Koorde DHT](https://github.com/Kubuxu/go-toy-koorde-dht)

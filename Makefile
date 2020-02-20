@@ -1,5 +1,5 @@
 build:
 	go build
 
-test:
-	go test ./test
+# test:
+#	go test ./test
