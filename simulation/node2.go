@@ -32,9 +32,9 @@ func createID(id string) []byte {
 }
 
 func main() {
-	sister := chord.NewInode("1", "0.0.0.0:8001")
+	sister := chord.NewInode("1", ":8001")
 
-	h, err := createNode("4", "0.0.0.0:8002", sister)
+	h, err := createNode("4", ":8002", sister)
 	if err != nil {
 		log.Fatalln(err)
 		return

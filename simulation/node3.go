@@ -33,9 +33,9 @@ func createID(id string) []byte {
 
 func main() {
 
-	joinNode := chord.NewInode("1", "0.0.0.0:8001")
+	joinNode := chord.NewInode("1", ":8001")
 
-	h, err := createNode("8", "0.0.0.0:8003", joinNode)
+	h, err := createNode("8", ":8003", joinNode)
 	if err != nil {
 		log.Fatalln(err)
 		return

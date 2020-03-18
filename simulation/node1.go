@@ -30,7 +30,7 @@ func createID(id string) []byte {
 }
 
 func main() {
-	h, err := createNode("1", "0.0.0.0:8001", nil)
+	h, err := createNode("1", ":8001", nil)
 	if err != nil {
 		log.Fatalln(err)
 	}
