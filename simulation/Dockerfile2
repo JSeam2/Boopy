@@ -3,6 +3,6 @@ RUN mkdir /app
 ADD . /app
 WORKDIR /app
 RUN go get github.com/jseam2/boopy
-RUN go build node1.go
-EXPOSE 8001
-CMD ["./node1"]
+RUN go build node2.go
+EXPOSE 8002
+CMD ["./node2"]
