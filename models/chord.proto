@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package abstractions;
+
+// Chord service runs inter-node comms
+// List of all the RPC services needed to maintain this cluster.
+
+service Chord {
+    /*
+    GetPredecessor: returns node believed to be current predecessor
+    GetSuccessor:   returns node believed to be current successor
+    Notify:         Notifies chord what the node believes to be its predecessor.
+    */
+    rpc GetPredecessor(Res) returns (Node);
+    rpc GetSuccessor(Res) returns (Node);
+    rpc Notify(Node) returns (Res);
+
+    /*
+    FindSuccessor:      Finds the successor node's ID. May call more RPC calls in other nodes.
+    SetSuccessor:       Sets the successor for a node.
+    CheckPredecessor:   Checks if a predecessor has failed.
+    SetPredecessor:     Sets the predecessor of a node.
+    */
+    rpc FindSuccessor(ID) returns (Node);
+    rpc SetSuccessor(Node) returns (Res);
+    rpc CheckPredecessor(ID) returns (Res);
+    rpc SetPredecessor(Node) returns (Res);
+
+    /*
+    RESERVED FOR FUTURE FUNCTIONS
+    */
+}
+
+// Node messages contain an ID and an address.
+message Node {
+    bytes id = 1;
+    string addr = 2;
+}
+
+message Res {}
+
+message ID {
+    bytes id = 1;
+}
