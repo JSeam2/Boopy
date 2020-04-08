@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"math/big"
 
-	models "github.com/jseam2/boopy/api"
+	"github.com/jseam2/boopy/api"
 )
 
 type fingerTable []*fingerEntry
 
-func newFingerTable(node *models.Node, m int) fingerTable {
+func newFingerTable(node *api.Node, m int) fingerTable {
 	ft := make([]*fingerEntry, m)
 	for i := range ft {
 		ft[i] = newFingerEntry(fingerID(node.Id, i, m), node)
@@ -20,12 +20,12 @@ func newFingerTable(node *models.Node, m int) fingerTable {
 
 // fingerEntry represents a single finger table entry
 type fingerEntry struct {
-	Id   []byte       // ID hash of (n + 2^i) mod (2^m)
-	Node *models.Node // RemoteNode that Start points to
+	Id   []byte    // ID hash of (n + 2^i) mod (2^m)
+	Node *api.Node // RemoteNode that Start points to
 }
 
 // newFingerEntry returns an allocated new finger entry with the attributes set
-func newFingerEntry(id []byte, node *models.Node) *fingerEntry {
+func newFingerEntry(id []byte, node *api.Node) *fingerEntry {
 	return &fingerEntry{
 		Id:   id,
 		Node: node,

@@ -1,18 +1,16 @@
 package boopy
 
 import (
-	// "errors"
 	"hash"
 
-	models "github.com/jseam2/boopy/api"
-	// "math/big"
+	"github.com/jseam2/boopy/api"
 )
 
 type Storage interface {
 	Get(string) ([]byte, error)
 	Set(string, string) error
 	Delete(string) error
-	Between([]byte, []byte) ([]*models.KV, error)
+	Between([]byte, []byte) ([]*api.KV, error)
 	MDelete(...string) error
 }
 
@@ -56,15 +54,15 @@ func (a *mapStore) Delete(key string) error {
 	return nil
 }
 
-func (a *mapStore) Between(from []byte, to []byte) ([]*models.KV, error) {
-	vals := make([]*models.KV, 0, 10)
+func (a *mapStore) Between(from []byte, to []byte) ([]*api.KV, error) {
+	vals := make([]*api.KV, 0, 10)
 	for k, v := range a.data {
 		hashedKey, err := a.hashKey(k)
 		if err != nil {
 			continue
 		}
 		if betweenRightIncl(hashedKey, from, to) {
-			pair := &models.KV{
+			pair := &api.KV{
 				Key:   k,
 				Value: v,
 			}

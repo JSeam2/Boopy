@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package models;
+package api;
 
 // Chord is the service for inter-node communication.
 // This has all the RPC functions needed to maintain
