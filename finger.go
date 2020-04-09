@@ -9,6 +9,7 @@ import (
 
 type fingerTable []*fingerEntry
 
+// Generate new finger table, with empty entries
 func newFingerTable(node *api.Node, m int) fingerTable {
 	ft := make([]*fingerEntry, m)
 	for i := range ft {
