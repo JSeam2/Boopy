@@ -32,13 +32,13 @@ func DefaultConfig() *Config {
 
 type Config struct {
 	Id   string
-	Addr string
+	Addr string // i presumme ip+port of node
 
 	ServerOpts []grpc.ServerOption
 	DialOpts   []grpc.DialOption
 
-	Hash     func() hash.Hash // Hash function to use
-	HashSize int
+	Hash     func() hash.Hash // Hash function to use (for generating node ID, )
+	HashSize int // number of fingers in finger table
 
 	StabilizeMin time.Duration // Minimum stabilization time
 	StabilizeMax time.Duration // Maximum stabilization time
@@ -90,17 +90,18 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	aInt := (&big.Int{}).SetBytes(id)
+	aInt := (&big.Int{}).SetBytes(id) // treating id as bytes of a big-endian unsigned integer, return the integer it represents
 
 	fmt.Printf("new node id %d, \n", aInt)
 
 	node.Node.Id = id
 	node.Node.Addr = cnf.Addr
 
-	// Populate finger table
+	// Populate finger table (by anotating itself to be in charge of all possible hashes at the moment)
 	node.fingerTable = newFingerTable(node.Node, cnf.HashSize)
 
-	// Start RPC server
+	// Start RPC server (start listening function, )
+	// transport is a struct that contains grpc server and supplementary attributes (like timeout etc)
 	transport, err := NewGrpcTransport(cnf)
 	if err != nil {
 		return nil, err
@@ -112,6 +113,8 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 
 	node.transport.Start()
 
+	// find the closest node clockwise from the id of this node (i.e. successor node)
+	// adds successor to the 'successor' attribute of the node
 	if err := node.join(joinNode); err != nil {
 		return nil, err
 	}
@@ -131,12 +134,14 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 	}()
 
 	// Peridoically fix finger tables.
+	// periodically runs down finger table, recreating finger entries for each finger table ID
 	go func() {
 		next := 0
 		ticker := time.NewTicker(100 * time.Millisecond)
 		for {
 			select {
 			case <-ticker.C:
+				// found in finger.go, 
 				next = node.fixFinger(next)
 			case <-node.shutdownCh:
 				ticker.Stop()
@@ -189,10 +194,14 @@ type Node struct {
 }
 
 func (n *Node) hashKey(key string) ([]byte, error) {
+	// uses existing hash function in Node to retrieve hash from key
+
 	h := n.cnf.Hash()
 	if _, err := h.Write([]byte(key)); err != nil {
 		return nil, err
 	}
+	// sum adds existing hash into the parameter (which in this case is nil) and returns result
+	// src: https://golang.org/pkg/hash/
 	val := h.Sum(nil)
 	return val, nil
 }
@@ -445,6 +454,7 @@ func (n *Node) stabilize() {
 		fmt.Println("error getting predecessor, ", err, x)
 		return
 	}
+	// between is a function in util.go, returns true if x.Id is between n.Id and succ.Id in a ring (i.e. x.Id is neither n.Id nor succ.Id)
 	if x.Id != nil && between(x.Id, n.Id, succ.Id) {
 		n.succMtx.Lock()
 		n.successor = x
