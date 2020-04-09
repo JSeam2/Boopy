@@ -4,11 +4,13 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"hash"
+	"log"
 	"math/big"
 	"sync"
 	"time"
 
 	"github.com/jseam2/boopy/api"
+	aurora "github.com/logrusorgru/aurora"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -92,7 +94,7 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 	}
 	aInt := (&big.Int{}).SetBytes(id) // treating id as bytes of a big-endian unsigned integer, return the integer it represents
 
-	fmt.Printf("new node id %d, \n", aInt)
+	log.Printf(aurora.Sprintf(aurora.Yellow("New Node ID = %d, \n"), aInt))
 
 	node.Node.Id = id
 	node.Node.Addr = cnf.Addr
@@ -119,7 +121,7 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 		return nil, err
 	}
 
-	// Peridoically stabilize the node.
+	// Stabilize nodes every second
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)
 		for {
@@ -133,8 +135,12 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 		}
 	}()
 
+<<<<<<< HEAD
 	// Peridoically fix finger tables.
 	// periodically runs down finger table, recreating finger entries for each finger table ID
+=======
+	// Fix finger table 100 ms
+>>>>>>> cf1d48c80cbbd1d2c8996251dac790eff11186ed
 	go func() {
 		next := 0
 		ticker := time.NewTicker(100 * time.Millisecond)
@@ -150,8 +156,7 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 		}
 	}()
 
-	// Peridoically checkes whether predecessor has failed.
-
+	// Check predecessor failed every 10 seconds
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		for {

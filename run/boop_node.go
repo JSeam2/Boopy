@@ -14,40 +14,51 @@ import (
 	"github.com/jseam2/boopy/api"
 )
 
+// Response describes the response from the REST server to requests
 type Response struct {
 	Message string `json:"message"`
 }
 
+// KeyValue describes the values for inserting a key-value pair into the network
 type KeyValue struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 
+// Key tells us if a key ...?
 type Key struct {
 	Key string `json:"key"`
 }
 
 func createNode(id string, addr string, sister *api.Node) (*boopy.Node, error) {
+	// Wrapper function calling the newNode function from the core API
 
+	// Set gRPC settings for node location, timeouts, etc.
 	cnf := boopy.DefaultConfig()
 	cnf.Id = id
 	cnf.Addr = addr
 	cnf.Timeout = 10 * time.Millisecond
 	cnf.MaxIdle = 100 * time.Millisecond
 
+	// Passthrough to the boopy library for newNode
 	n, err := boopy.NewNode(cnf, sister)
 	return n, err
 }
 
 func createID(id string) []byte {
+	// Set some bigInt
 	val := big.NewInt(0)
+	// Convert ID to a base10 bigInt -> return byte representation
 	val.SetString(id, 10)
 	return val.Bytes()
 }
 
 func main() {
+	// Returns a new, default-initialized node for a sister node
+	// INodes: independent nodes - meant to be used only for checking
 	sister := boopy.NewInode("1", ":8001")
 
+	// We initialize our node ID and its address, along with the 'blank node'
 	node, err := createNode("4", ":8002", sister)
 	if err != nil {
 		log.Fatalln(err)
@@ -76,6 +87,8 @@ func main() {
 	// }()
 
 	// REST Server
+
+	// Basic ping function
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		res := Response{
 			Message: "Pong!",
@@ -85,6 +98,9 @@ func main() {
 			panic(err)
 		}
 	})
+
+	// Setter Interface: input key-value pair into network
+	// submit {key: "", value: ""} -> Response
 	http.HandleFunc("/set", func(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		var kv KeyValue
@@ -106,6 +122,8 @@ func main() {
 			panic(err)
 		}
 	})
+
+	// Search interface: given {key:""} -> Response{ID of node : "", Address:""}
 	http.HandleFunc("/find", func(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		var k Key
@@ -129,6 +147,7 @@ func main() {
 			panic(err)
 		}
 	})
+	// Value finder: given {key} -> find {value} in network
 	http.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		var k Key
@@ -150,6 +169,8 @@ func main() {
 			panic(err)
 		}
 	})
+
+	// Key deletion: Given {key} delete {key, value} from network
 	http.HandleFunc("/delete", func(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		var k Key
@@ -172,8 +193,10 @@ func main() {
 		}
 	})
 
+	// Expose server
 	log.Fatal(http.ListenAndServe(":83", nil))
 
+	// Cause os interrupts (control-c) to stop the service
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	<-c
