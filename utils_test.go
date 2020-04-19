@@ -16,6 +16,15 @@ func Test_isEqual(t *testing.T) {
 		args args
 		want bool
 	}{
+		{"Standard", args{[]byte{1,0,0,1}, []byte{1,0,0,1}}, true}
+		{"Empty", args{[]byte{}, []byte{}}, true}
+		{"Middle1", args{[]byte{1,1,0,1}, []byte{1,0,0,1}}, false}
+		{"Middle2", args{[]byte{1,0,1,1}, []byte{1,0,0,1}}, false}
+		{"End", args{[]byte{0,0,0,0}, []byte{0,0,0,1}}, false}
+		{"One", args{[]byte{1}, []byte{1}}, true}
+		{"Larges", args{[]byte{127,0,0,1}, []byte{255,0,0,1}}, false}
+		{"Garbage", args{[]byte{15,265,987,354}, []byte{15,265,987,354}}, true}
+		{"Garbage2", args{[]byte{15,266,987,354}, []byte{15,265,9871,364}}, false}
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
@@ -34,8 +43,13 @@ func Test_isPowerOfTwo(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want bool
+		want int
 	}{
+		{"1", args{1}, 1}
+		{"2", args{2}, 4}
+		{"0", args{0}, 0}
+		{"16", args{16}, 256}
+		{"-1", args{-1}, 1}
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
