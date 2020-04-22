@@ -4,6 +4,7 @@ import (
 	"hash"
 	"reflect"
 	"testing"
+	"crypto/sha1"
 
 	"github.com/jseam2/boopy/api"
 )
@@ -17,7 +18,8 @@ func TestNewMapStore(t *testing.T) {
 		args args
 		want Storage
 	}{
-		// TODO: Add test cases.
+		//TODO: MORE TESTS
+		// {"1", args{hashFunc: sha1.New}, },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -43,6 +45,9 @@ func Test_mapStore_hashKey(t *testing.T) {
 		want    []byte
 		wantErr bool
 	}{
+		{"exists",
+		fields{data: map[string]string{"key1":"1", "key2":"2"}, Hash: sha1.New},
+	}
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
@@ -78,9 +83,16 @@ func Test_mapStore_Get(t *testing.T) {
 		want    []byte
 		wantErr bool
 	}{
+<<<<<<< HEAD
 		{"exists1", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key1"},[]byte{1}, nil},
 		{"exists2", fields{map[string]string{"key1": "1", "key2": "257"}, nil}, args{"key2"},[]byte{1,1}, nil},
 		{"doesnt exist", fields{map[string]string{"key2": "2"}, nil}, args{"key1"},nil, ERR_KEY_NOT_FOUND},
+=======
+		// {"exists",
+		// map[string]string{"key1":"1", "key2":"2"},
+		// args{"key1"},
+		// []byte{}},
+>>>>>>> b93cb08b45c39e795a06f158a979604a812fe272
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {

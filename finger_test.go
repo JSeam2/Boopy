@@ -39,6 +39,7 @@ func Test_newFingerTable(t *testing.T) {
 		args args
 		want fingerTable
 	}{
+		// {"1", args{node:NewInode("8", "0.0.0.0:8083"), m:1}, },
 		// TODO: Add test cases.
 		// {"1", args{NewInode("8", "0.0.0.0:8083"), 1}, fingerTable},
 	}
