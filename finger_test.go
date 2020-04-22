@@ -83,6 +83,11 @@ func Test_FingerID(t *testing.T) {
 		want []byte
 	}{
 		// TODO: Add test cases.
+                {
+                        "standard",
+                        args{[]byte{1}, 2, 3},
+                        []byte{5},
+                },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
