@@ -40,7 +40,7 @@ type Config struct {
 	DialOpts   []grpc.DialOption
 
 	Hash     func() hash.Hash // Hash function to use (for generating node ID, )
-	HashSize int // number of fingers in finger table
+	HashSize int              // number of fingers in finger table
 
 	StabilizeMin time.Duration // Minimum stabilization time
 	StabilizeMax time.Duration // Maximum stabilization time
@@ -135,19 +135,15 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 		}
 	}()
 
-<<<<<<< HEAD
 	// Peridoically fix finger tables.
 	// periodically runs down finger table, recreating finger entries for each finger table ID
-=======
-	// Fix finger table 100 ms
->>>>>>> cf1d48c80cbbd1d2c8996251dac790eff11186ed
 	go func() {
 		next := 0
 		ticker := time.NewTicker(100 * time.Millisecond)
 		for {
 			select {
 			case <-ticker.C:
-				// found in finger.go, 
+				// found in finger.go,
 				next = node.fixFinger(next)
 			case <-node.shutdownCh:
 				ticker.Stop()
