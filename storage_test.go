@@ -99,9 +99,26 @@ func Test_mapStore_Get(t *testing.T) {
 		want    []byte
 		wantErr bool
 	}{
-		{"exists1", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key1"}, []byte{1}, nil},
-		{"exists2", fields{map[string]string{"key1": "1", "key2": "257"}, nil}, args{"key2"}, []byte{1, 1}, nil},
-		{"doesnt exist", fields{map[string]string{"key2": "2"}, nil}, args{"key1"}, nil, ERR_KEY_NOT_FOUND},
+		// FYI: byte conversion for []byte(string)
+		// converts each CHARACTER to its ASCII number representation
+		// It doesn't convert the string to a number first.
+		// i.e. 257 -> "2" + "5" + "7" not []byte{1,1}
+		{"exists1",
+			fields{map[string]string{"key1": "1", "key2": "2"}, nil},
+			args{"key1"}, []byte("1"),
+			false},
+		{"exists2",
+			fields{map[string]string{"key1": "1", "key2": "257"}, nil},
+			args{"key2"}, []byte("257"),
+			false},
+		{"Not exist",
+			fields{map[string]string{"key2": "2"}, nil},
+			args{"key1"}, nil,
+			true},
+		{"Call on empty table",
+			fields{make(map[string]string), nil},
+			args{"key1"}, nil,
+			true},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
@@ -137,8 +154,14 @@ func Test_mapStore_Set(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"1", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key3", "3"}, nil},
-		{"2", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key2", "3"}, nil},
+		{"New value",
+			fields{map[string]string{"key1": "1", "key2": "2"}, nil},
+			args{"key3", "3"},
+			false},
+		{"Replace keys",
+			fields{map[string]string{"key1": "1", "key2": "2"}, nil},
+			args{"key2", "3"},
+			false},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
@@ -168,9 +191,18 @@ func Test_mapStore_Delete(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"doesnt exist1", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key3"}, nil},
-		{"doesnt exist2", fields{map[string]string{}, nil}, args{"key3"}, nil},
-		{"exist", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key2"}, nil},
+		{"doesnt exist1",
+			fields{map[string]string{"key1": "1", "key2": "2"}, nil},
+			args{"key3"},
+			false},
+		{"doesnt exist2",
+			fields{map[string]string{}, nil},
+			args{"key3"},
+			false},
+		{"exist",
+			fields{map[string]string{"key1": "1", "key2": "2"}, nil},
+			args{"key2"},
+			false},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
@@ -202,6 +234,7 @@ func Test_mapStore_Between(t *testing.T) {
 		want    []*api.KV
 		wantErr bool
 	}{
+
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
@@ -236,10 +269,22 @@ func Test_mapStore_MDelete(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"single del", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key2"}, nil},
-		{"single del", fields{map[string]string{"key1": "1", "key2": "2", "key3": "3"}, nil}, args{"key1", "key2"}, nil},
-		{"doesnt exist 1", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key3"}, nil},
-		{"doesnt exist2", fields{map[string]string{}, nil}, args{"key2", "key3"}, nil},
+		{"single del",
+			fields{map[string]string{"key1": "1", "key2": "2"}, nil},
+			args{[]string{"key2"}},
+			false},
+		{"single del",
+			fields{map[string]string{"key1": "1", "key2": "2", "key3": "3"}, nil},
+			args{[]string{"key1", "key2"}},
+			false},
+		{"doesnt exist 1",
+			fields{map[string]string{"key1": "1", "key2": "2"}, nil},
+			args{[]string{"key3"}},
+			false},
+		{"doesnt exist 2",
+			fields{map[string]string{}, nil},
+			args{[]string{"key2", "key3"}},
+			false},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
