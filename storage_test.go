@@ -99,16 +99,9 @@ func Test_mapStore_Get(t *testing.T) {
 		want    []byte
 		wantErr bool
 	}{
-<<<<<<< HEAD
-		{"exists1", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key1"},[]byte{1}, nil},
-		{"exists2", fields{map[string]string{"key1": "1", "key2": "257"}, nil}, args{"key2"},[]byte{1,1}, nil},
-		{"doesnt exist", fields{map[string]string{"key2": "2"}, nil}, args{"key1"},nil, ERR_KEY_NOT_FOUND},
-=======
-		// {"exists",
-		// map[string]string{"key1":"1", "key2":"2"},
-		// args{"key1"},
-		// []byte{}},
->>>>>>> b93cb08b45c39e795a06f158a979604a812fe272
+		{"exists1", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key1"}, []byte{1}, nil},
+		{"exists2", fields{map[string]string{"key1": "1", "key2": "257"}, nil}, args{"key2"}, []byte{1, 1}, nil},
+		{"doesnt exist", fields{map[string]string{"key2": "2"}, nil}, args{"key1"}, nil, ERR_KEY_NOT_FOUND},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
@@ -143,7 +136,7 @@ func Test_mapStore_Set(t *testing.T) {
 		fields  fields
 		args    args
 		wantErr bool
-	}{	
+	}{
 		{"1", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key3", "3"}, nil},
 		{"2", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key2", "3"}, nil},
 		// TODO: Add test cases.
@@ -244,9 +237,9 @@ func Test_mapStore_MDelete(t *testing.T) {
 		wantErr bool
 	}{
 		{"single del", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key2"}, nil},
-		{"single del", fields{map[string]string{"key1": "1", "key2": "2", "key3":"3"}, nil}, args{"key1", "key2"}, nil},
+		{"single del", fields{map[string]string{"key1": "1", "key2": "2", "key3": "3"}, nil}, args{"key1", "key2"}, nil},
 		{"doesnt exist 1", fields{map[string]string{"key1": "1", "key2": "2"}, nil}, args{"key3"}, nil},
-		{"doesnt exist2", fields{map[string]string{}, nil}, args{"key2","key3"}, nil},
+		{"doesnt exist2", fields{map[string]string{}, nil}, args{"key2", "key3"}, nil},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
