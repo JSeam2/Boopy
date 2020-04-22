@@ -1,35 +1,17 @@
 package boopy
 
 import (
-	"crypto/sha1"
-	"fmt"
-	"math/big"
+	// "crypto/sha1"
+	// "fmt"
+	// "math/big"
 	"reflect"
 	"testing"
 
 	"github.com/jseam2/boopy/api"
 )
 
-// func TestNewFingerTable(t *testing.T) {
-// 	g := newFingerTable(NewInode("8", "0.0.0.0:8003"), sha1.New().Size())
-// 	for i, j := range g {
-// 		fmt.Printf("%d, %x, %x\n", i, j.Id, j.Node.Id)
-// 	}
-// }
-// 
-// func TestNewFingerEntry(t *testing.T) {
-// 	hashSize := sha1.New().Size() * 8
-// 	id := GetHashID("0.0.0.0:8083")
-// 	xInt := (&big.Int{}).SetBytes(id)
-// 	for i := 0; i < 100; i++ {
-// 		nextHash := fingerID(id, i, hashSize)
-// 		aInt := (&big.Int{}).SetBytes(nextHash)
-// 
-// 		fmt.Printf("%d, %d %d\n", xInt, aInt, hashSize)
-// 	}
-// }
 
-func Test_newFingerTable(t *testing.T) {
+func Test_NewFingerTable(t *testing.T) {
 	type args struct {
 		node *api.Node
 		m    int
@@ -39,19 +21,20 @@ func Test_newFingerTable(t *testing.T) {
 		args args
 		want fingerTable
 	}{
-		// {"1", args{node:NewInode("8", "0.0.0.0:8083"), m:1}, },
 		// TODO: Add test cases.
 		// {"1", args{NewInode("8", "0.0.0.0:8083"), 1}, fingerTable},
-                {"standard", args{NewInode("1", "0.0.0.0:8001"), 2}, []*fingerEntry{
-                        fingerEntry{
-                                Id: NewInode("1", "0.0.0.0:8001").Id,
-                                Node: NewInode("1", "0.0.0.0:8001")
+                {
+                        "standard", args{NewInode("1", "0.0.0.0:8001"), 2}, []*fingerEntry{
+                                &fingerEntry{
+                                        Id: fingerID(NewInode("1", "0.0.0.0:8001").Id, 0, 2),
+                                        Node: NewInode("1", "0.0.0.0:8001"),
+                                },
+                                &fingerEntry{
+                                        Id: fingerID(NewInode("1", "0.0.0.0:8001").Id, 1, 2),
+                                        Node: NewInode("1", "0.0.0.0:8001"),
+                                },
                         },
-                        fingerEntry{
-                                Id: NewInode("1", "0.0.0.0:8001").Id,
-                                Node: NewInode("1", "0.0.0.0:8001")
-                        }
-                }
+                },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -62,7 +45,7 @@ func Test_newFingerTable(t *testing.T) {
 	}
 }
 
-func Test_newFingerEntry(t *testing.T) {
+func Test_NewFingerEntry(t *testing.T) {
 	type args struct {
 		id   []byte
 		node *api.Node
@@ -73,6 +56,11 @@ func Test_newFingerEntry(t *testing.T) {
 		want *fingerEntry
 	}{
 		// TODO: Add test cases.
+                {
+                        "standard", 
+                        args{[]byte{0,0,0}, NewInode("1", "0.0.0.0:8001")}, 
+                        &fingerEntry{Id:[]byte{0,0,0}, Node:NewInode("1", "0.0.0.0:8001")},
+                },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -83,7 +71,7 @@ func Test_newFingerEntry(t *testing.T) {
 	}
 }
 
-func Test_fingerID(t *testing.T) {
+func Test_FingerID(t *testing.T) {
 	type args struct {
 		n []byte
 		i int
