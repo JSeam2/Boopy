@@ -24,7 +24,12 @@ func isPowerOfTwo(num int) bool {
 
 func randStabilize(min, max time.Duration) time.Duration {
 	r := rand.Float64()
-	return time.Duration((r * float64(max-min)) + float64(min))
+	if max < min {
+		// Catch if min > max
+		return min
+	} else {
+		return time.Duration((r * float64(max-min)) + float64(min))
+	}
 }
 
 // check if key is between a and b, right inclusive

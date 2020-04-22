@@ -71,11 +71,13 @@ func Test_randStabilize(t *testing.T) {
 		args args
 		want time.Duration
 	}{
-		// TODO: Add test cases.
+		{"<1 sec", args{min:(0*time.Millisecond),max:(1000 * time.Millisecond)}, (1000 * time.Millisecond)}
+		{"1 sec", args{min:(1*time.Second),max:(1*time.Second)}, (1000 * time.Millisecond)}
+		// TODO: Add MORE test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := randStabilize(tt.args.min, tt.args.max); got != tt.want {
+			if got := randStabilize(tt.args.min, tt.args.max); got > tt.want {
 				t.Errorf("randStabilize() = %v, want %v", got, tt.want)
 			}
 		})
