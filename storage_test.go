@@ -1,10 +1,10 @@
 package boopy
 
 import (
+	"crypto/sha1"
 	"hash"
 	"reflect"
 	"testing"
-	"crypto/sha1"
 
 	"github.com/jseam2/boopy/api"
 )
@@ -29,6 +29,11 @@ func TestNewMapStore(t *testing.T) {
 		})
 	}
 }
+func shaSum(str string) []byte {
+	h := sha1.New()
+	h.Write([]byte(str))
+	return h.Sum(nil)
+}
 
 func Test_mapStore_hashKey(t *testing.T) {
 	type fields struct {
@@ -46,8 +51,19 @@ func Test_mapStore_hashKey(t *testing.T) {
 		wantErr bool
 	}{
 		{"exists",
-		fields{data: map[string]string{"key1":"1", "key2":"2"}, Hash: sha1.New},
-	}
+			fields{
+				data: map[string]string{},
+				Hash: sha1.New},
+			args{key: "key1"},
+			shaSum("key1"),
+			false},
+		{"nil",
+			fields{
+				data: map[string]string{},
+				Hash: sha1.New},
+			args{key: ""},
+			shaSum(""),
+			false},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
