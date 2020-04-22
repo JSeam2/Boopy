@@ -16,15 +16,15 @@ func Test_isEqual(t *testing.T) {
 		args args
 		want bool
 	}{
-		{"Standard", args{[]byte{1,0,0,1}, []byte{1,0,0,1}}, true},
+		{"Standard", args{[]byte{1, 0, 0, 1}, []byte{1, 0, 0, 1}}, true},
 		{"Empty", args{[]byte{}, []byte{}}, true},
-		{"Middle1", args{[]byte{1,1,0,1}, []byte{1,0,0,1}}, false},
-		{"Middle2", args{[]byte{1,0,1,1}, []byte{1,0,0,1}}, false},
-		{"End", args{[]byte{0,0,0,0}, []byte{0,0,0,1}}, false},
+		{"Middle1", args{[]byte{1, 1, 0, 1}, []byte{1, 0, 0, 1}}, false},
+		{"Middle2", args{[]byte{1, 0, 1, 1}, []byte{1, 0, 0, 1}}, false},
+		{"End", args{[]byte{0, 0, 0, 0}, []byte{0, 0, 0, 1}}, false},
 		{"One", args{[]byte{1}, []byte{1}}, true},
-		{"Larges", args{[]byte{127,0,0,1}, []byte{255,0,0,1}}, false},
-		{"Garbage", args{[]byte{15,265,987,354}, []byte{15,265,987,354}}, true},
-		{"Garbage2", args{[]byte{15,266,987,354}, []byte{15,265,9871,364}}, false}
+		{"Larges", args{[]byte{127, 0, 0, 1}, []byte{255, 0, 0, 1}}, false},
+		{"Garbage", args{[]byte{15, 25, 98, 54}, []byte{15, 25, 98, 54}}, true},
+		{"Garbage2", args{[]byte{15, 26, 72, 54}, []byte{15, 26, 71, 64}}, false},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
@@ -45,11 +45,11 @@ func Test_isPowerOfTwo(t *testing.T) {
 		args args
 		want bool
 	}{
-		{"1", args{1}, true}
-		{"2", args{2}, true}
-		{"0", args{0}, false}
-		{"16", args{16}, true}
-		{"-1", args{-1}, false}
+		{"1", args{1}, true},
+		{"2", args{2}, true},
+		{"0", args{0}, false},
+		{"16", args{16}, true},
+		{"-1", args{-1}, false},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
@@ -71,8 +71,8 @@ func Test_randStabilize(t *testing.T) {
 		args args
 		want time.Duration
 	}{
-		{"<1 sec", args{min:(0*time.Millisecond),max:(1000 * time.Millisecond)}, (1000 * time.Millisecond)},
-		{"1 sec", args{min:(1*time.Second),max:(1*time.Second)}, (1000 * time.Millisecond)}
+		{"<1 sec", args{min: (0 * time.Millisecond), max: (1000 * time.Millisecond)}, (1000 * time.Millisecond)},
+		{"1 sec", args{min: (1 * time.Second), max: (1 * time.Second)}, (1000 * time.Millisecond)},
 		// TODO: Add MORE test cases.
 	}
 	for _, tt := range tests {
@@ -150,7 +150,7 @@ func Test_between(t *testing.T) {
 		{"2", args{[]byte{1, 1, 1, 0}, []byte{1, 1, 0, 0}, []byte{1, 1, 1, 1}}, true},
 		{"3", args{[]byte{1, 1, 1, 1, 1}, []byte{0}, []byte{1, 1, 1, 1}}, false},
 		{"4", args{[]byte{1, 1, 1, 1, 1}, []byte{0}, []byte{1, 1, 1, 1, 1, 1}}, true},
-		{"5", args{[]byte{0, 0, 0, 0}, []byte{0, 0, 0, 0}, []byte{1, 0, 0, 0}}, false},	
+		{"5", args{[]byte{0, 0, 0, 0}, []byte{0, 0, 0, 0}, []byte{1, 0, 0, 0}}, false},
 		{"6", args{GetHashID("11"), GetHashID("1"), GetHashID("20")}, true},
 		// TODO: Add test cases.
 	}

@@ -4,6 +4,7 @@ import (
 	"hash"
 	"reflect"
 	"testing"
+	"crypto/sha1"
 
 	"github.com/jseam2/boopy/api"
 )
@@ -17,7 +18,8 @@ func TestNewMapStore(t *testing.T) {
 		args args
 		want Storage
 	}{
-		// TODO: Add test cases.
+		//TODO: MORE TESTS
+		// {"1", args{hashFunc: sha1.New}, },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -43,6 +45,9 @@ func Test_mapStore_hashKey(t *testing.T) {
 		want    []byte
 		wantErr bool
 	}{
+		{"exists",
+		fields{data: map[string]string{"key1":"1", "key2":"2"}, Hash: sha1.New},
+	}
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
@@ -78,6 +83,10 @@ func Test_mapStore_Get(t *testing.T) {
 		want    []byte
 		wantErr bool
 	}{
+		// {"exists",
+		// map[string]string{"key1":"1", "key2":"2"},
+		// args{"key1"},
+		// []byte{}},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
