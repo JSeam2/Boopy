@@ -45,11 +45,11 @@ func Test_isPowerOfTwo(t *testing.T) {
 		args args
 		want bool
 	}{
-		{"1", args{1}, 1}
-		{"2", args{2}, 4}
-		{"0", args{0}, 0}
-		{"16", args{16}, 256}
-		{"-1", args{-1}, 1}
+		{"1", args{1}, true}
+		{"2", args{2}, true}
+		{"0", args{0}, false}
+		{"16", args{16}, true}
+		{"-1", args{-1}, false}
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
@@ -146,6 +146,12 @@ func Test_between(t *testing.T) {
 		args args
 		want bool
 	}{
+		{"1", args{[]byte{1, 0, 0, 0}, []byte{0, 0, 0, 0}, []byte{1, 0, 0, 0}}, false},
+		{"2", args{[]byte{1, 1, 1, 0}, []byte{1, 1, 0, 0}, []byte{1, 1, 1, 1}}, true},
+		{"3", args{[]byte{1, 1, 1, 1, 1}, []byte{0}, []byte{1, 1, 1, 1}}, false},
+		{"4", args{[]byte{1, 1, 1, 1, 1}, []byte{0}, []byte{1, 1, 1, 1, 1, 1}}, true},
+		{"5", args{[]byte{0, 0, 0, 0}, []byte{0, 0, 0, 0}, []byte{1, 0, 0, 0}}, false},	
+		{"6", args{GetHashID("11"), GetHashID("1"), GetHashID("20")}, true},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
