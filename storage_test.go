@@ -250,7 +250,7 @@ func Test_mapStore_Between(t *testing.T) {
 			args{from: []byte{181, 87, 158, 197, 170, 12, 199, 43, 240, 31, 152, 208, 193, 211, 9, 184, 147, 231, 64, 11},
 				to: []byte{182, 88, 159, 198, 171, 13, 200, 44, 241, 32, 153, 209, 194, 212, 10, 185, 148, 232, 65, 12}},
 			[]*api.KV{},
-			// I'm not actually entirely sure this works correctly.
+			// I'm not actually entirely sure this particular test works correctly.
 			false,
 		},
 		// 	{"IsBetween",
