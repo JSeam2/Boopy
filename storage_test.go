@@ -223,6 +223,8 @@ func Test_mapStore_Between(t *testing.T) {
 		data map[string]string
 		Hash func() hash.Hash
 	}
+	// AllFields := fields{data: map[string]string{"key0": "0", "key1": "1", "key2": "2", "key3": "3", "key4": "4", "key5": "5", "key6": "6", "key7": "7", "key8": "8", "key9": "9", "key10": "10", "key11": "11", "key12": "12", "key13": "13", "key14": "14", "key15": "15", "key16": "16", "key17": "17", "key18": "18", "key19": "19", "key20": "20", "key21": "21", "key22": "22", "key23": "23", "key24": "24", "key25": "25", "key26": "26", "key27": "27", "key28": "28", "key29": "29", "key30": "30", "key31": "31", "key32": "32", "key33": "33", "key34": "34", "key35": "35", "key36": "36", "key37": "37", "key38": "38", "key39": "39", "key40": "40", "key41": "41", "key42": "42", "key43": "43", "key44": "44", "key45": "45", "key46": "46", "key47": "47", "key48": "48", "key49": "49", "key50": "50", "key51": "51", "key52": "52", "key53": "53", "key54": "54", "key55": "55", "key56": "56", "key57": "57", "key58": "58", "key59": "59", "key60": "60", "key61": "61", "key62": "62", "key63": "63", "key64": "64", "key65": "65", "key66": "66", "key67": "67", "key68": "68", "key69": "69", "key70": "70", "key71": "71", "key72": "72", "key73": "73", "key74": "74", "key75": "75", "key76": "76", "key77": "77", "key78": "78", "key79": "79", "key80": "80", "key81": "81", "key82": "82", "key83": "83", "key84": "84", "key85": "85", "key86": "86", "key87": "87", "key88": "88", "key89": "89", "key90": "90", "key91": "91", "key92": "92", "key93": "93", "key94": "94", "key95": "95", "key96": "96", "key97": "97", "key98": "98", "key99": "99"},
+	// 	Hash: sha1.New}
 	type args struct {
 		from []byte
 		to   []byte
@@ -234,6 +236,23 @@ func Test_mapStore_Between(t *testing.T) {
 		want    []*api.KV
 		wantErr bool
 	}{
+		{"No Match",
+			fields{data: map[string]string{},
+				Hash: sha1.New},
+			args{from: []byte{181, 87, 158, 197, 170, 12, 199, 43, 240, 31, 152, 208, 193, 211, 9, 184, 147, 231, 64, 11},
+				to: []byte{182, 88, 159, 198, 171, 13, 200, 44, 241, 32, 153, 209, 194, 212, 10, 185, 148, 232, 65, 12}},
+			[]*api.KV{},
+			false,
+		},
+		{"Exact Match",
+			fields{data: map[string]string{"key1": "1"},
+				Hash: sha1.New},
+			args{from: []byte{181, 87, 158, 197, 170, 12, 199, 43, 240, 31, 152, 208, 193, 211, 9, 184, 147, 231, 64, 11},
+				to: []byte{182, 88, 159, 198, 171, 13, 200, 44, 241, 32, 153, 209, 194, 212, 10, 185, 148, 232, 65, 12}},
+			[]*api.KV{},
+			// I'm not actually entirely sure this works correctly.
+			false,
+		},
 		// 	{"IsBetween",
 		// 	fields
 		// },
