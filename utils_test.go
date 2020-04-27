@@ -1,7 +1,6 @@
 package boopy
 
 import (
-	"strconv"
 	"testing"
 	"time"
 )
@@ -84,20 +83,6 @@ func Test_randStabilize(t *testing.T) {
 	}
 }
 
-func TestRL(t *testing.T) {
-	t.Parallel()
-
-	min := GetHashID("0.0.0.0:8081")
-	max := GetHashID("0.0.0.0:8083")
-	for i := 2; i < 100; i++ {
-		val := strconv.Itoa(i)
-		key := GetHashID(val)
-		if got := betweenRightIncl(key, min, max); got != true {
-			t.Errorf("betweenRightIncl() %s %x = %v, want %v", val, key, got, true)
-		}
-	}
-}
-
 func Test_betweenRightIncl(t *testing.T) {
 	t.Parallel()
 
@@ -124,7 +109,7 @@ func Test_betweenRightIncl(t *testing.T) {
 			},
 			true,
 		},
-		{"6", args{GetHashID("11"), GetHashID("1"), GetHashID("20")}, true},
+		{"6", args{GetHashID("11"), GetHashID("1"), GetHashID("20")}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -146,12 +131,12 @@ func Test_between(t *testing.T) {
 		args args
 		want bool
 	}{
-		{"1", args{[]byte{1, 0, 0, 0}, []byte{0, 0, 0, 0}, []byte{1, 0, 0, 0}}, false},
+		{"1", args{[]byte{1, 0, 0, 0}, []byte{0, 0, 0, 0}, []byte{1, 0, 0, 0}}, true},
 		{"2", args{[]byte{1, 1, 1, 0}, []byte{1, 1, 0, 0}, []byte{1, 1, 1, 1}}, true},
 		{"3", args{[]byte{1, 1, 1, 1, 1}, []byte{0}, []byte{1, 1, 1, 1}}, false},
 		{"4", args{[]byte{1, 1, 1, 1, 1}, []byte{0}, []byte{1, 1, 1, 1, 1, 1}}, true},
 		{"5", args{[]byte{0, 0, 0, 0}, []byte{0, 0, 0, 0}, []byte{1, 0, 0, 0}}, false},
-		{"6", args{GetHashID("11"), GetHashID("1"), GetHashID("20")}, true},
+		{"6", args{GetHashID("11"), GetHashID("1"), GetHashID("20")}, false},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
