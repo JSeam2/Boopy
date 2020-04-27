@@ -120,13 +120,13 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 
 	// Stabilize nodes every second
 	go func() {
-		ticker := time.NewTicker(1 * time.Second)
+		timer := time.NewTicker(500 * time.Millisecond)
 		for {
 			select {
-			case <-ticker.C:
+			case <-timer.C:
 				node.stabilize()
 			case <-node.shutdownCh:
-				ticker.Stop()
+				timer.Stop()
 				return
 			}
 		}
@@ -136,14 +136,14 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 	// periodically runs down finger table, recreating finger entries for each finger table ID
 	go func() {
 		next := 0
-		ticker := time.NewTicker(100 * time.Millisecond)
+		timer := time.NewTicker(100 * time.Millisecond)
 		for {
 			select {
-			case <-ticker.C:
+			case <-timer.C:
 				// found in finger.go,
 				next = node.fixFinger(next)
 			case <-node.shutdownCh:
-				ticker.Stop()
+				timer.Stop()
 				return
 			}
 		}
@@ -254,6 +254,10 @@ func (n *Node) Delete(key string) error {
 
 func (n *Node) Join(joinNode *api.Node) error {
 	return n.join(joinNode)
+}
+
+func (n *Node) Stabilize() {
+	n.stabilize()
 }
 
 func (n *Node) Stop() {

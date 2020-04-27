@@ -30,7 +30,6 @@ time.sleep(1)
 print("Completed Initialization")
 print('-'*81)
 
-# Run Routine
 for node in nodes:
     id = int(node[0]) % len(nodes)
     res = requests.post('http://' + node[2] + '/join',
@@ -41,17 +40,17 @@ for node in nodes:
     )
 
     data = res.json()
-    print(data)
-    if res.status_code == requests.codes.ok:
-        print("Test Passed For Node {}".format(node[0]))
 
-for node in nodes
+print("Completed Join. Running Nodes.")
 
-print('-'*81)
 
-print("Completed Integration test")
-for proc in proc_list:
-    print("Kill PID: {}".format(proc.pid))
-    proc.terminate()
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    print('Received Interrupt...')
+    for proc in proc_list:
+        print("Kill PID: {}".format(proc.pid))
+        proc.terminate()
 
-print('='*81)
+    print('Killed Processes')

@@ -4,6 +4,5 @@ ADD . /app
 WORKDIR /app
 RUN go get github.com/jseam2/boopy
 RUN go build boop_node.go
-EXPOSE 8000
-EXPOSE 80
-CMD ["./boop_node 0 0.0.0.0:8000 0.0.0.0:80"]
+EXPOSE 8001 81
+CMD ["/app/boop_node", "$ID", "0.0.0.0:8001", "0.0.0.0:81"]

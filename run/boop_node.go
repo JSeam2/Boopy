@@ -263,6 +263,19 @@ func main() {
 		}
 	})
 
+	http.HandleFunc("/stabilize", func(w http.ResponseWriter, r *http.Request) {
+		node.Stabilize()
+
+		res := Response{
+			Message: "Stabilize Success",
+			Error:   "",
+		}
+
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			panic(err)
+		}
+	})
+
 	// Expose server
 	log.Fatal(http.ListenAndServe(frontEndAddr, nil))
 
