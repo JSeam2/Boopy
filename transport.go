@@ -37,11 +37,11 @@ type Transport interface {
 	//RPC
 	GetSuccessor(*api.Node) (*api.Node, error)
 	FindSuccessor(*api.Node, []byte) (*api.Node, error)
+	SetSuccessor(*api.Node, *api.Node) error
 	GetPredecessor(*api.Node) (*api.Node, error)
-	Notify(*api.Node, *api.Node) error
 	CheckPredecessor(*api.Node) error
 	SetPredecessor(*api.Node, *api.Node) error
-	SetSuccessor(*api.Node, *api.Node) error
+	Notify(*api.Node, *api.Node) error
 
 	//Storage
 	GetKey(*api.Node, string) (*api.GetResponse, error)

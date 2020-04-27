@@ -17,6 +17,28 @@ import (
 // Response describes the response from the REST server to requests
 type Response struct {
 	Message string `json:"message"`
+	Error   string `json:"error"`
+}
+
+type SetResponse struct {
+	Message string `json:"message"`
+	Error   string `json:"error"`
+	Key     string `json:"key"`
+	Value   string `json:"value"`
+}
+
+type GetResponse struct {
+	Message string `json:"message"`
+	Error   string `json:"error"`
+	Key     string `json:"key"`
+	Value   string `json:"value"`
+}
+
+type FindResponse struct {
+	Message string `json:"message"`
+	Error   string `json:"error"`
+	Id      string `json:"id"`
+	Addr    string `json:"address"`
 }
 
 // KeyValue describes the values for inserting a key-value pair into the network
@@ -25,9 +47,13 @@ type KeyValue struct {
 	Value string `json:"value"`
 }
 
-// Key tells us if a key ...?
 type Key struct {
 	Key string `json:"key"`
+}
+
+type JoinConfig struct {
+	Id   string `json:"id"`
+	Addr string `json:"address"`
 }
 
 func createNode(id string, addr string, sister *api.Node) (*boopy.Node, error) {
@@ -45,46 +71,18 @@ func createNode(id string, addr string, sister *api.Node) (*boopy.Node, error) {
 	return n, err
 }
 
-func createID(id string) []byte {
-	// Set some bigInt
-	val := big.NewInt(0)
-	// Convert ID to a base10 bigInt -> return byte representation
-	val.SetString(id, 10)
-	return val.Bytes()
-}
-
 func main() {
-	// Returns a new, default-initialized node for a sister node
-	// INodes: independent nodes - meant to be used only for checking
-	sister := boopy.NewInode("1", ":8001")
+	id := os.Args[1]
+	chordAddr := os.Args[2]
+	frontEndAddr := os.Args[3]
 
-	// We initialize our node ID and its address, along with the 'blank node'
-	node, err := createNode("4", ":8002", sister)
+	node, err := createNode(id, chordAddr, nil)
 	if err != nil {
 		log.Fatalln(err)
 		return
 	}
 
 	shut := make(chan bool)
-	// var count int
-	// go func() {
-	// 	ticker := time.NewTicker(1 * time.Second)
-	// 	for {
-	// 		select {
-	// 		case <-ticker.C:
-	// 			count++
-	// 			key := strconv.Itoa(count)
-	// 			value := fmt.Sprintf(`{"graph_id" : %d, "nodes" : ["node-%d","node-%d","node-%d"]}`, count, count+1, count+2, count+3)
-	// 			sErr := h.Set(key, value)
-	// 			if sErr != nil {
-	// 				log.Println("err: ", sErr)
-	// 			}
-	// 		case <-shut:
-	// 			ticker.Stop()
-	// 			return
-	// 		}
-	// 	}
-	// }()
 
 	// REST Server
 
@@ -92,6 +90,7 @@ func main() {
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		res := Response{
 			Message: "Pong!",
+			Error:   "",
 		}
 
 		if err := json.NewEncoder(w).Encode(res); err != nil {
@@ -111,11 +110,24 @@ func main() {
 
 		nodeErr := node.Set(kv.Key, kv.Value)
 		if nodeErr != nil {
-			panic(err)
+			panic(nodeErr)
+			res := SetResponse{
+				Message: "Set Failed",
+				Error:   fmt.Sprintf("%v", err),
+				Key:     kv.Key,
+				Value:   kv.Value,
+			}
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				panic(err)
+			}
+			return
 		}
 
-		res := Response{
-			Message: "Set Successfully",
+		res := SetResponse{
+			Message: "Set Success",
+			Error:   "",
+			Key:     kv.Key,
+			Value:   kv.Value,
 		}
 
 		if err := json.NewEncoder(w).Encode(res); err != nil {
@@ -134,13 +146,26 @@ func main() {
 
 		tempNode, nodeErr := node.Find(k.Key)
 		if nodeErr != nil {
-			panic(err)
+			panic(nodeErr)
+			res := FindResponse{
+				Message: "Find Failed",
+				Error:   fmt.Sprintf("%v", err),
+				Id:      "",
+				Addr:    "",
+			}
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				panic(err)
+			}
+			return
 		}
 
 		aInt := (&big.Int{}).SetBytes(tempNode.Id)
 
-		res := Response{
-			Message: fmt.Sprintf("Id: %s Address: %s", aInt, tempNode.Addr),
+		res := FindResponse{
+			Message: "Find Success",
+			Error:   "",
+			Id:      fmt.Sprintf("%d", aInt),
+			Addr:    tempNode.Addr,
 		}
 
 		if err := json.NewEncoder(w).Encode(res); err != nil {
@@ -158,11 +183,24 @@ func main() {
 
 		val, nodeErr := node.Get(k.Key)
 		if nodeErr != nil {
-			panic(err)
+			res := GetResponse{
+				Message: "Get Failed",
+				Error:   fmt.Sprintf("%v", err),
+				Key:     k.Key,
+				Value:   "",
+			}
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				panic(err)
+			}
+			panic(nodeErr)
+			return
 		}
 
-		res := Response{
-			Message: fmt.Sprintf("Value: %s ", val),
+		res := GetResponse{
+			Message: "Get Success",
+			Error:   "",
+			Key:     k.Key,
+			Value:   fmt.Sprintf("%s", val),
 		}
 
 		if err := json.NewEncoder(w).Encode(res); err != nil {
@@ -181,11 +219,43 @@ func main() {
 
 		nodeErr := node.Delete(k.Key)
 		if nodeErr != nil {
-			panic(err)
+			panic(nodeErr)
 		}
 
 		res := Response{
-			Message: "Deleted Successfully!",
+			Message: "Delete Success",
+			Error:   "",
+		}
+
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			panic(err)
+		}
+	})
+
+	// Join
+	http.HandleFunc("/join", func(w http.ResponseWriter, r *http.Request) {
+		decoder := json.NewDecoder(r.Body)
+		var joinConfig JoinConfig
+		err := decoder.Decode(&joinConfig)
+		if err != nil {
+			panic(err)
+		}
+
+		joinNode := boopy.NewInode(joinConfig.Id, joinConfig.Addr)
+		if err := node.Join(joinNode); err != nil {
+			res := Response{
+				Message: "Join Failed",
+				Error:   fmt.Sprintf("%v", err),
+			}
+			if err := json.NewEncoder(w).Encode(res); err != nil {
+				panic(err)
+			}
+			return
+		}
+
+		res := Response{
+			Message: "Join Success",
+			Error:   "",
 		}
 
 		if err := json.NewEncoder(w).Encode(res); err != nil {
@@ -194,7 +264,7 @@ func main() {
 	})
 
 	// Expose server
-	log.Fatal(http.ListenAndServe(":83", nil))
+	log.Fatal(http.ListenAndServe(frontEndAddr, nil))
 
 	// Cause os interrupts (control-c) to stop the service
 	c := make(chan os.Signal, 1)
