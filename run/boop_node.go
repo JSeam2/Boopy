@@ -71,6 +71,12 @@ func createNode(id string, addr string, sister *api.Node) (*boopy.Node, error) {
 	return n, err
 }
 
+func enableCors(w *http.ResponseWriter, req *http.Request) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+}
+
 func main() {
 	id := os.Args[1]
 	chordAddr := os.Args[2]
@@ -85,9 +91,12 @@ func main() {
 	shut := make(chan bool)
 
 	// REST Server
+	fs := http.FileServer(http.Dir("./build"))
+	http.Handle("/", fs)
 
 	// Basic ping function
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w, r)
 		res := Response{
 			Message: "Pong!",
 			Error:   "",
@@ -101,6 +110,7 @@ func main() {
 	// Setter Interface: input key-value pair into network
 	// submit {key: "", value: ""} -> Response
 	http.HandleFunc("/set", func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w, r)
 		decoder := json.NewDecoder(r.Body)
 		var kv KeyValue
 		err := decoder.Decode(&kv)
@@ -137,6 +147,7 @@ func main() {
 
 	// Search interface: given {key:""} -> Response{ID of node : "", Address:""}
 	http.HandleFunc("/find", func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w, r)
 		decoder := json.NewDecoder(r.Body)
 		var k Key
 		err := decoder.Decode(&k)
@@ -174,6 +185,7 @@ func main() {
 	})
 	// Value finder: given {key} -> find {value} in network
 	http.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w, r)
 		decoder := json.NewDecoder(r.Body)
 		var k Key
 		err := decoder.Decode(&k)
@@ -210,6 +222,7 @@ func main() {
 
 	// Key deletion: Given {key} delete {key, value} from network
 	http.HandleFunc("/delete", func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w, r)
 		decoder := json.NewDecoder(r.Body)
 		var k Key
 		err := decoder.Decode(&k)
@@ -234,6 +247,7 @@ func main() {
 
 	// Join
 	http.HandleFunc("/join", func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w, r)
 		decoder := json.NewDecoder(r.Body)
 		var joinConfig JoinConfig
 		err := decoder.Decode(&joinConfig)
@@ -264,6 +278,7 @@ func main() {
 	})
 
 	http.HandleFunc("/stabilize", func(w http.ResponseWriter, r *http.Request) {
+		enableCors(&w, r)
 		node.Stabilize()
 
 		res := Response{
