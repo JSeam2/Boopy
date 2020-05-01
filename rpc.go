@@ -87,10 +87,12 @@ func (n *Node) SetSuccessor(ctx context.Context, succ *api.Node) (*api.ER, error
 
 func (n *Node) FindSuccessor(ctx context.Context, id *api.ID) (*api.Node, error) {
 	succ, err := n.findSuccessor(id.Id)
+	// If there's an error
 	if err != nil {
 		return nil, err
 	}
 
+	// If we can't find our successor
 	if succ == nil {
 		return nil, ERR_NO_SUCCESSOR
 	}

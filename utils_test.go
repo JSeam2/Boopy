@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func Test_isEqual(t *testing.T) {
+func Test_bytesEqual(t *testing.T) {
 	type args struct {
 		a []byte
 		b []byte
@@ -28,8 +28,8 @@ func Test_isEqual(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := isEqual(tt.args.a, tt.args.b); got != tt.want {
-				t.Errorf("isEqual() = %v, want %v", got, tt.want)
+			if got := bytesEqual(tt.args.a, tt.args.b); got != tt.want {
+				t.Errorf("bytesEqual() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -83,7 +83,7 @@ func Test_randStabilize(t *testing.T) {
 	}
 }
 
-func Test_betweenRightIncl(t *testing.T) {
+func Test_keyBetwIncludeRight(t *testing.T) {
 	t.Parallel()
 
 	type args struct {
@@ -113,8 +113,8 @@ func Test_betweenRightIncl(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := betweenRightIncl(tt.args.key, tt.args.a, tt.args.b); got != tt.want {
-				t.Errorf("betweenRightIncl() = %v, want %v", got, tt.want)
+			if got := keyBetwIncludeRight(tt.args.key, tt.args.a, tt.args.b); got != tt.want {
+				t.Errorf("keyBetwIncludeRight() = %v, want %v", got, tt.want)
 			}
 		})
 	}

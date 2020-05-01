@@ -33,19 +33,17 @@ func DefaultConfig() *Config {
 
 type Config struct {
 	Id   string
-	Addr string // i presumme ip+port of node
+	Addr string // i presume import of node
 
 	ServerOpts []grpc.ServerOption
 	DialOpts   []grpc.DialOption
 
-	Hash     func() hash.Hash // Hash function to use (for generating node ID, )
-	HashSize int              // number of fingers in finger table
-
 	StabilizeMin time.Duration // Minimum stabilization time
 	StabilizeMax time.Duration // Maximum stabilization time
-
-	Timeout time.Duration
-	MaxIdle time.Duration
+	Timeout      time.Duration
+	MaxIdle      time.Duration
+	Hash         func() hash.Hash // Hash function to use (for generating node ID, )
+	HashSize     int              // number of fingers in finger table
 }
 
 func (c *Config) Validate() error {
@@ -72,30 +70,29 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 	if err := cnf.Validate(); err != nil {
 		return nil, err
 	}
+	var nodeID string
+
 	node := &Node{
 		Node:       new(api.Node),
 		shutdownCh: make(chan struct{}),
 		cnf:        cnf,
 		storage:    NewMapStore(cnf.Hash),
 	}
-
-	var nID string
 	if cnf.Id != "" {
-		nID = cnf.Id
+		nodeID = cnf.Id
 	} else {
-		nID = cnf.Addr
+		nodeID = cnf.Addr
 	}
-	id, err := node.hashKey(nID)
+
+	id, err := node.hashKey(nodeID)
 	if err != nil {
 		return nil, err
 	}
+
 	aInt := (&big.Int{}).SetBytes(id) // treating id as bytes of a big-endian unsigned integer, return the integer it represents
-
 	log.Printf(aurora.Sprintf(aurora.Yellow("New Node ID = %d, \n"), aInt))
-
 	node.Node.Id = id
 	node.Node.Addr = cnf.Addr
-
 	// Populate finger table (by anotating itself to be in charge of all possible hashes at the moment)
 	node.fingerTable = newFingerTable(node.Node, cnf.HashSize)
 
@@ -109,7 +106,6 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 	node.transport = transport
 
 	api.RegisterChordServer(transport.server, node)
-
 	node.transport.Start()
 
 	// find the closest node clockwise from the id of this node (i.e. successor node)
@@ -117,20 +113,6 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 	if err := node.join(joinNode); err != nil {
 		return nil, err
 	}
-
-	// Stabilize nodes every second
-	go func() {
-		timer := time.NewTicker(500 * time.Millisecond)
-		for {
-			select {
-			case <-timer.C:
-				node.stabilize()
-			case <-node.shutdownCh:
-				timer.Stop()
-				return
-			}
-		}
-	}()
 
 	// Peridoically fix finger tables.
 	// periodically runs down finger table, recreating finger entries for each finger table ID
@@ -148,7 +130,19 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 			}
 		}
 	}()
-
+	// Stabilize nodes every second
+	go func() {
+		timer := time.NewTicker(500 * time.Millisecond)
+		for {
+			select {
+			case <-timer.C:
+				node.stabilize()
+			case <-node.shutdownCh:
+				timer.Stop()
+				return
+			}
+		}
+	}()
 	// Check predecessor failed every 10 seconds
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
@@ -179,15 +173,12 @@ type Node struct {
 
 	shutdownCh chan struct{}
 
-	fingerTable fingerTable
-	ftMtx       sync.RWMutex
-
-	storage Storage
-	stMtx   sync.RWMutex
-
-	transport Transport
-	tsMtx     sync.RWMutex
-
+	fingerTable   fingerTable
+	ftMtx         sync.RWMutex
+	storage       Storage
+	stMtx         sync.RWMutex
+	transport     Transport
+	tsMtx         sync.RWMutex
 	lastStablized time.Time
 }
 
@@ -204,33 +195,32 @@ func (n *Node) hashKey(key string) ([]byte, error) {
 	return val, nil
 }
 
-func (n *Node) join(joinNode *api.Node) error {
+func (incomingNode *Node) join(joinNode *api.Node) error {
 	// First check if node already present in the circle
 	// Join this node to the same chord ring as parent
-	var newNode *api.Node
+	var joiningNode *api.Node
 	// // Ask if our id already exists on the ring.
 	if joinNode != nil {
-		remoteNode, err := n.findSuccessorRPC(joinNode, n.Id)
+		remoteNode, err := incomingNode.findSuccessorRPC(joinNode, incomingNode.Id)
 		if err != nil {
 			return err
 		}
 
-		if isEqual(remoteNode.Id, n.Id) {
+		if bytesEqual(remoteNode.Id, incomingNode.Id) {
 			return ERR_NODE_EXISTS
 		}
-		newNode = joinNode
+		joiningNode = joinNode
 	} else {
-		newNode = n.Node
+		joiningNode = incomingNode.Node
 	}
 
-	succ, err := n.findSuccessorRPC(newNode, n.Id)
+	succ, err := incomingNode.findSuccessorRPC(joiningNode, incomingNode.Id)
 	if err != nil {
 		return err
 	}
-	n.succMtx.Lock()
-	n.successor = succ
-	n.succMtx.Unlock()
-
+	incomingNode.succMtx.Lock()
+	incomingNode.successor = succ
+	incomingNode.succMtx.Unlock()
 	return nil
 }
 
@@ -267,15 +257,14 @@ func (n *Node) Stop() {
 	// Do nothing if we are our own successor (i.e. we are the only node in the
 	// ring).
 	n.succMtx.RLock()
-	succ := n.successor
-	n.succMtx.RUnlock()
-
 	n.predMtx.RLock()
+	succ := n.successor
 	pred := n.predecessor
+	n.succMtx.RUnlock()
 	n.predMtx.RUnlock()
 
 	if n.Node.Addr != succ.Addr && pred != nil {
-		n.moveKeysFromLocal(pred, succ)
+		n.transferKeysFromNode(pred, succ)
 		predErr := n.setPredecessorRPC(succ, pred)
 		succErr := n.setSuccessorRPC(pred, succ)
 		fmt.Println("stop errors: ", predErr, succErr)
@@ -346,8 +335,7 @@ func (n *Node) transferKeys(pred, succ *api.Node) {
 
 }
 
-func (n *Node) moveKeysFromLocal(pred, succ *api.Node) {
-
+func (n *Node) transferKeysFromNode(pred, succ *api.Node) {
 	keys, err := n.storage.Between(pred.Id, succ.Id)
 	if len(keys) > 0 {
 		fmt.Println("transfering: ", keys, succ, err)
@@ -379,7 +367,7 @@ func (n *Node) deleteKeys(node *api.Node, keys []string) error {
 // When a new node joins, it requests keys from it's successor
 func (n *Node) requestKeys(pred, succ *api.Node) ([]*api.KV, error) {
 
-	if isEqual(n.Id, succ.Id) {
+	if bytesEqual(n.Id, succ.Id) {
 		return nil, nil
 	}
 	return n.requestKeysRPC(
@@ -400,11 +388,11 @@ func (n *Node) findSuccessor(id []byte) (*api.Node, error) {
 
 	var err error
 
-	if betweenRightIncl(id, curr.Id, succ.Id) {
+	if keyBetwIncludeRight(id, curr.Id, succ.Id) {
 		return succ, nil
 	} else {
 		pred := n.closestPrecedingNode(id)
-		if isEqual(pred.Id, n.Id) {
+		if bytesEqual(pred.Id, n.Id) {
 			succ, err = n.getSuccessorRPC(pred)
 
 			if err != nil {

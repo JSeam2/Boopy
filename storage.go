@@ -64,28 +64,27 @@ func (a *mapStore) Delete(key string) error {
 }
 
 // Between returns up to 10 keys that are between a given
-func (a *mapStore) Between(from []byte, to []byte) ([]*api.KV, error) {
+func (storeptr *mapStore) Between(from []byte, to []byte) ([]*api.KV, error) {
 	// Generate a slice of up to 10 key-value pairs
-	vals := make([]*api.KV, 0, 10)
-
-	for k, v := range a.data {
+	betwVals := make([]*api.KV, 0, 10)
+	for key, val := range storeptr.data {
 		// generate hash of each key
-		hashedKey, err := a.hashKey(k)
+		hashedKey, err := storeptr.hashKey(key)
 		if err != nil {
 			continue
 		}
 
 		// check if any of the hashed keys match the search range; add if it does to returned slice
-		if betweenRightIncl(hashedKey, from, to) {
+		if keyBetwIncludeRight(hashedKey, from, to) {
 			pair := &api.KV{
-				Key:   k,
-				Value: v,
+				Key:   key,
+				Value: val,
 			}
-			vals = append(vals, pair)
+			betwVals = append(vals, pair)
 		}
 	}
 	// Return all values that are between the given byte sets (hash-value wise)
-	return vals, nil
+	return betwVals, nil
 }
 
 // MDelete allows users to delete more than one key by providing multiple strings

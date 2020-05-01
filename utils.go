@@ -14,12 +14,14 @@ var (
 	ERR_KEY_NOT_FOUND = errors.New("key not found")
 )
 
-func isEqual(a, b []byte) bool {
+func bytesEqual(a, b []byte) bool {
 	return bytes.Compare(a, b) == 0
 }
 
 func isPowerOfTwo(num int) bool {
-	return (num != 0) && ((num & (num - 1)) == 0)
+	nonZero := (num != 0)
+	evenBits := (num&(num) - 1) == 0
+	return nonZero && evenBits
 }
 
 func randStabilize(min, max time.Duration) time.Duration {
@@ -33,7 +35,7 @@ func randStabilize(min, max time.Duration) time.Duration {
 }
 
 // check if key is between a and b, right inclusive
-func betweenRightIncl(key, a, b []byte) bool {
+func keyBetwIncludeRight(key, a, b []byte) bool {
 	return between(key, a, b) || bytes.Equal(key, b)
 }
 
