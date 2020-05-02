@@ -54,7 +54,7 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func NewInode(id string, addr string) *api.Node {
+func NewInode(id string, address string) *api.Node {
 	h := sha1.New()
 	if _, err := h.Write([]byte(id)); err != nil {
 		return nil
@@ -63,7 +63,7 @@ func NewInode(id string, addr string) *api.Node {
 
 	return &api.Node{
 		Id:   val,
-		Addr: addr,
+		Addr: address,
 	}
 }
 
@@ -241,25 +241,25 @@ func (n *Node) join(joinNode *api.Node) error {
 	Public storage implementation
 */
 
-func (n *Node) Find(key string) (*api.Node, error) {
-	return n.locate(key)
+func (n *Node) Find(nodeKey string) (*api.Node, error) {
+	return n.locate(nodeKey)
 }
 
-func (n *Node) Get(key string) ([]byte, error) {
-	return n.get(key)
+func (n *Node) Get(nodeKey string) ([]byte, error) {
+	return n.get(nodeKey)
 }
-func (n *Node) Set(key, value string) error {
-	return n.set(key, value)
+func (n *Node) Set(nodeKey, value string) error {
+	return n.set(nodeKey, value)
 }
-func (n *Node) Delete(key string) error {
-	return n.delete(key)
+func (n *Node) Delete(nodeKey string) error {
+	return n.delete(nodeKey)
 }
 
 /*
 	Finds the node for the key
 */
-func (n *Node) locate(key string) (*api.Node, error) {
-	id, err := n.hashKey(key)
+func (n *Node) locate(nodeKey string) (*api.Node, error) {
+	id, err := n.hashKey(nodeKey)
 	if err != nil {
 		return nil, err
 	}
@@ -267,33 +267,33 @@ func (n *Node) locate(key string) (*api.Node, error) {
 	return succ, err
 }
 
-func (n *Node) get(key string) ([]byte, error) {
-	node, err := n.locate(key)
+func (n *Node) get(nodeKey string) ([]byte, error) {
+	node, err := n.locate(nodeKey)
 	if err != nil {
 		return nil, err
 	}
-	val, err := n.getKeyRPC(node, key)
+	val, err := n.getKeyRPC(node, nodeKey)
 	if err != nil {
 		return nil, err
 	}
 	return val.Value, nil
 }
 
-func (n *Node) set(key, value string) error {
-	node, err := n.locate(key)
+func (n *Node) set(nodeKey, value string) error {
+	node, err := n.locate(nodeKey)
 	if err != nil {
 		return err
 	}
-	err = n.setKeyRPC(node, key, value)
+	err = n.setKeyRPC(node, nodeKey, value)
 	return err
 }
 
-func (n *Node) delete(key string) error {
-	node, err := n.locate(key)
+func (n *Node) delete(nodeKey string) error {
+	node, err := n.locate(nodeKey)
 	if err != nil {
 		return err
 	}
-	err = n.deleteKeyRPC(node, key)
+	err = n.deleteKeyRPC(node, nodeKey)
 	return err
 }
 
@@ -346,8 +346,8 @@ func (n *Node) moveKeysFromLocal(pred, succ *api.Node) {
 
 }
 
-func (n *Node) deleteKeys(node *api.Node, keys []string) error {
-	return n.deleteKeysRPC(node, keys)
+func (n *Node) deleteKeys(node *api.Node, nodeKeys []string) error {
+	return n.deleteKeysRPC(node, nodeKeys)
 }
 
 // When a new node joins, it requests keys from it's successor
@@ -440,43 +440,43 @@ func (n *Node) closestPrecedingNode(id []byte) *api.Node {
 	Periodic functions implementation
 */
 
-func (n *Node) stabilize() {
+func (node *Node) stabilize() {
 
-	n.succMtx.RLock()
-	succ := n.successor
+	node.succMtx.RLock()
+	succ := node.successor
 	if succ == nil {
-		n.succMtx.RUnlock()
+		node.succMtx.RUnlock()
 		return
 	}
-	n.succMtx.RUnlock()
+	node.succMtx.RUnlock()
 
-	x, err := n.getPredecessorRPC(succ)
+	x, err := node.getPredecessorRPC(succ)
 	if err != nil || x == nil {
 		fmt.Println("error getting predecessor, ", err, x)
 		return
 	}
 	// between is a function in util.go, returns true if x.Id is between n.Id and succ.Id in a ring (i.e. x.Id is neither n.Id nor succ.Id)
-	if x.Id != nil && between(x.Id, n.Id, succ.Id) {
-		n.succMtx.Lock()
-		n.successor = x
-		n.succMtx.Unlock()
+	if x.Id != nil && between(x.Id, node.Id, succ.Id) {
+		node.succMtx.Lock()
+		node.successor = x
+		node.succMtx.Unlock()
 	}
-	n.notifyRPC(succ, n.Node)
+	node.notifyRPC(succ, n.Node)
 }
 
-func (n *Node) checkPredecessor() {
+func (node *Node) checkPredecessor() {
 	// implement using rpc func
-	n.predMtx.RLock()
-	pred := n.predecessor
-	n.predMtx.RUnlock()
+	node.predMtx.RLock()
+	pred := node.predecessor
+	node.predMtx.RUnlock()
 
 	if pred != nil {
-		err := n.transport.CheckPredecessor(pred)
+		err := node.transport.CheckPredecessor(pred)
 		if err != nil {
 			fmt.Println("predecessor failed!", err)
-			n.predMtx.Lock()
-			n.predecessor = nil
-			n.predMtx.Unlock()
+			node.predMtx.Lock()
+			node.predecessor = nil
+			node.predMtx.Unlock()
 		}
 	}
 }
@@ -562,15 +562,15 @@ func (n *Node) SetSuccessor(ctx context.Context, succ *api.Node) (*api.ER, error
 }
 
 // SetPredecessor sets the predecessor on the node..
-func (n *Node) SetPredecessor(ctx context.Context, pred *api.Node) (*api.ER, error) {
-	n.predMtx.Lock()
-	n.predecessor = pred
-	n.predMtx.Unlock()
+func (node *Node) SetPredecessor(ctx context.Context, pred *api.Node) (*api.ER, error) {
+	node.predMtx.Lock()
+	node.predecessor = pred
+	node.predMtx.Unlock()
 	return emptyRequest, nil
 }
 
-func (n *Node) FindSuccessor(ctx context.Context, id *api.ID) (*api.Node, error) {
-	succ, err := n.findSuccessor(id.Id)
+func (node *Node) FindSuccessor(ctx context.Context, id *api.ID) (*api.Node, error) {
+	succ, err := node.findSuccessor(id.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -587,10 +587,10 @@ func (n *Node) CheckPredecessor(ctx context.Context, id *api.ID) (*api.ER, error
 	return emptyRequest, nil
 }
 
-func (n *Node) GetPredecessor(ctx context.Context, r *api.ER) (*api.Node, error) {
-	n.predMtx.RLock()
-	pred := n.predecessor
-	n.predMtx.RUnlock()
+func (node *Node) GetPredecessor(ctx context.Context, r *api.ER) (*api.Node, error) {
+	node.predMtx.RLock()
+	pred := node.predecessor
+	node.predMtx.RUnlock()
 	if pred == nil {
 		return emptyNode, nil
 	}
