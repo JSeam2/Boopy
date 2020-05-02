@@ -70,9 +70,9 @@ type GrpcTransport struct {
 // func NewGrpcTransport(config *Config) (api.ChordClient, error) {
 func NewGrpcTransport(config *Config) (*GrpcTransport, error) {
 
-	addr := config.Addr
-	// Try to start the listener
-	listener, err := net.Listen("tcp", addr)
+	uriAddr := config.Addr
+	// Try to start the tcpListener
+	tcpListener, err := net.Listen("tcp", uriAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func NewGrpcTransport(config *Config) (*GrpcTransport, error) {
 
 	// Setup the transport
 	grp := &GrpcTransport{
-		sock:    listener.(*net.TCPListener),
+		sock:    tcpListener.(*net.TCPListener),
 		timeout: config.Timeout,
 		maxIdle: config.MaxIdle,
 		pool:    pool,
@@ -105,259 +105,256 @@ func (g *grpcConn) Close() {
 	g.conn.Close()
 }
 
-func (g *GrpcTransport) registerNode(node *Node) {
-	api.RegisterChordServer(g.server, node)
+func (gt *GrpcTransport) registerNode(node *Node) {
+	api.RegisterChordServer(gt.server, node)
 }
 
-func (g *GrpcTransport) GetServer() *grpc.Server {
-	return g.server
+func (gt *GrpcTransport) GetServer() *grpc.Server {
+	return gt.server
 }
 
 // Gets an outbound connection to a host
-func (g *GrpcTransport) getConn(
+func (gt *GrpcTransport) getConn(
 	addr string,
 ) (api.ChordClient, error) {
 
-	g.poolMtx.RLock()
+	gt.poolMtx.RLock()
 
-	if atomic.LoadInt32(&g.shutdown) == 1 {
-		g.poolMtx.Unlock()
+	if atomic.LoadInt32(&gt.shutdown) == 1 {
+		gt.poolMtx.Unlock()
 		return nil, fmt.Errorf("TCP transport is shutdown")
 	}
 
-	cc, ok := g.pool[addr]
-	g.poolMtx.RUnlock()
+	cc, ok := gt.pool[addr]
+	gt.poolMtx.RUnlock()
 	if ok {
 		return cc.client, nil
 	}
 
 	var conn *grpc.ClientConn
 	var err error
-	conn, err = Dial(addr, g.config.DialOpts...)
+	conn, err = Dial(addr, gt.config.DialOpts...)
 	if err != nil {
 		return nil, err
 	}
 
 	client := api.NewChordClient(conn)
 	cc = &grpcConn{addr, client, conn, time.Now()}
-	g.poolMtx.Lock()
-	if g.pool == nil {
-		g.poolMtx.Unlock()
+	gt.poolMtx.Lock()
+	if gt.pool != nil {
+		gt.pool[addr] = cc
+		gt.poolMtx.Unlock()
+	} else {
+		gt.poolMtx.Unlock()
 		return nil, errors.New("must instantiate node before using")
 	}
-	g.pool[addr] = cc
-	g.poolMtx.Unlock()
 
 	return client, nil
 }
 
-func (g *GrpcTransport) Start() error {
+func (gt *GrpcTransport) Start() error {
 	// Start RPC server
-	go g.listen()
+	go gt.listen()
 
 	// Reap old connections
-	go g.reapOld()
-
+	go gt.reapOld()
 	return nil
-
 }
 
 // Returns an outbound TCP connection to the pool
-func (g *GrpcTransport) returnConn(o *grpcConn) {
+func (gt *GrpcTransport) returnConn(o *grpcConn) {
 	// Update the last asctive time
 	o.lastActive = time.Now()
 
 	// Push back into the pool
-	g.poolMtx.Lock()
-	defer g.poolMtx.Unlock()
-	if atomic.LoadInt32(&g.shutdown) == 1 {
+	gt.poolMtx.Lock()
+	defer gt.poolMtx.Unlock()
+	if atomic.LoadInt32(&gt.shutdown) == 1 {
 		o.conn.Close()
 		return
 	}
-	g.pool[o.addr] = o
+	gt.pool[o.addr] = o
 }
 
 // Shutdown the TCP transport
-func (g *GrpcTransport) Stop() error {
-	atomic.StoreInt32(&g.shutdown, 1)
+func (gt *GrpcTransport) Stop() error {
+	atomic.StoreInt32(&gt.shutdown, 1)
 
 	// Close all the connections
-	g.poolMtx.Lock()
-
-	g.server.Stop()
-	for _, conn := range g.pool {
+	gt.server.Stop()
+	gt.poolMtx.Lock()
+	for _, conn := range gt.pool {
 		conn.Close()
 	}
-	g.pool = nil
-
-	g.poolMtx.Unlock()
+	gt.pool = nil
+	gt.poolMtx.Unlock()
 
 	return nil
 }
 
 // Closes old outbound connections
-func (g *GrpcTransport) reapOld() {
+func (gt *GrpcTransport) reapOld() {
 	ticker := time.NewTicker(60 * time.Second)
 
 	for {
-		if atomic.LoadInt32(&g.shutdown) == 1 {
+		if atomic.LoadInt32(&gt.shutdown) == 1 {
 			return
 		}
 		select {
 		case <-ticker.C:
-			g.reap()
+			gt.reap()
 		}
 
 	}
 }
 
-func (g *GrpcTransport) reap() {
-	g.poolMtx.Lock()
-	defer g.poolMtx.Unlock()
-	for host, conn := range g.pool {
-		if time.Since(conn.lastActive) > g.maxIdle {
+func (gt *GrpcTransport) reap() {
+	gt.poolMtx.Lock()
+	defer gt.poolMtx.Unlock()
+	for host, conn := range gt.pool {
+		if time.Since(conn.lastActive) > gt.maxIdle {
 			conn.Close()
-			delete(g.pool, host)
+			delete(gt.pool, host)
 		}
 	}
 }
 
 // Listens for inbound connections
-func (g *GrpcTransport) listen() {
-	g.server.Serve(g.sock)
+func (gt *GrpcTransport) listen() {
+	gt.server.Serve(gt.sock)
 }
 
 // GetSuccessor the successor ID of a remote node.
-func (g *GrpcTransport) GetSuccessor(node *api.Node) (*api.Node, error) {
-	client, err := g.getConn(node.Addr)
+func (gt *GrpcTransport) GetSuccessor(node *api.Node) (*api.Node, error) {
+	client, err := gt.getConn(node.Addr)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
+	conntx, cancel := context.WithTimeout(context.Background(), gt.timeout)
 	defer cancel()
-	return client.GetSuccessor(ctx, emptyRequest)
+	return client.GetSuccessor(conntx, emptyRequest)
 }
 
 // FindSuccessor the successor ID of a remote node.
-func (g *GrpcTransport) FindSuccessor(node *api.Node, id []byte) (*api.Node, error) {
+func (gt *GrpcTransport) FindSuccessor(node *api.Node, id []byte) (*api.Node, error) {
 	// fmt.Println("yo", node.Id, id)
-	client, err := g.getConn(node.Addr)
+	client, err := gt.getConn(node.Addr)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
+	conntx, cancel := context.WithTimeout(context.Background(), gt.timeout)
 	defer cancel()
-	return client.FindSuccessor(ctx, &api.ID{Id: id})
+	return client.FindSuccessor(conntx, &api.ID{Id: id})
 }
 
 // GetPredecessor the successor ID of a remote node.
-func (g *GrpcTransport) GetPredecessor(node *api.Node) (*api.Node, error) {
-	client, err := g.getConn(node.Addr)
+func (gt *GrpcTransport) GetPredecessor(node *api.Node) (*api.Node, error) {
+	client, err := gt.getConn(node.Addr)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
+	conntx, cancel := context.WithTimeout(context.Background(), gt.timeout)
 	defer cancel()
-	return client.GetPredecessor(ctx, emptyRequest)
+	return client.GetPredecessor(conntx, emptyRequest)
 }
 
-func (g *GrpcTransport) SetPredecessor(node *api.Node, pred *api.Node) error {
-	client, err := g.getConn(node.Addr)
+func (gt *GrpcTransport) SetPredecessor(node *api.Node, predecessor *api.Node) error {
+	client, err := gt.getConn(node.Addr)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
+	conntx, cancel := context.WithTimeout(context.Background(), gt.timeout)
 	defer cancel()
-	_, err = client.SetPredecessor(ctx, pred)
+	_, err = client.SetPredecessor(conntx, predecessor)
 	return err
 }
 
-func (g *GrpcTransport) SetSuccessor(node *api.Node, succ *api.Node) error {
-	client, err := g.getConn(node.Addr)
+func (gt *GrpcTransport) SetSuccessor(node *api.Node, succ *api.Node) error {
+	client, err := gt.getConn(node.Addr)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
+	conntx, cancel := context.WithTimeout(context.Background(), gt.timeout)
 	defer cancel()
-	_, err = client.SetSuccessor(ctx, succ)
+	_, err = client.SetSuccessor(conntx, succ)
 	return err
 }
 
-func (g *GrpcTransport) Notify(node, pred *api.Node) error {
-	client, err := g.getConn(node.Addr)
+func (gt *GrpcTransport) Notify(node, predecessor *api.Node) error {
+	client, err := gt.getConn(node.Addr)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
+	conntx, cancel := context.WithTimeout(context.Background(), gt.timeout)
 	defer cancel()
-	_, err = client.Notify(ctx, pred)
+	_, err = client.Notify(conntx, predecessor)
 	return err
 
 }
 
-func (g *GrpcTransport) CheckPredecessor(node *api.Node) error {
-	client, err := g.getConn(node.Addr)
+func (gt *GrpcTransport) CheckPredecessor(node *api.Node) error {
+	client, err := gt.getConn(node.Addr)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
+	conntx, cancel := context.WithTimeout(context.Background(), gt.timeout)
 	defer cancel()
-	_, err = client.CheckPredecessor(ctx, &api.ID{Id: node.Id})
+	_, err = client.CheckPredecessor(conntx, &api.ID{Id: node.Id})
 	return err
 }
 
-func (g *GrpcTransport) GetKey(node *api.Node, key string) (*api.GetResponse, error) {
-	client, err := g.getConn(node.Addr)
+func (gt *GrpcTransport) GetKey(node *api.Node, key string) (*api.GetResponse, error) {
+	client, err := gt.getConn(node.Addr)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
+	conntx, cancel := context.WithTimeout(context.Background(), gt.timeout)
 	defer cancel()
-	return client.XGet(ctx, &api.GetRequest{Key: key})
+	return client.XGet(conntx, &api.GetRequest{Key: key})
 }
 
-func (g *GrpcTransport) SetKey(node *api.Node, key, value string) error {
-	client, err := g.getConn(node.Addr)
+func (gt *GrpcTransport) SetKey(node *api.Node, key, value string) error {
+	client, err := gt.getConn(node.Addr)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
+	conntx, cancel := context.WithTimeout(context.Background(), gt.timeout)
 	defer cancel()
-	_, err = client.XSet(ctx, &api.SetRequest{Key: key, Value: value})
+	_, err = client.XSet(conntx, &api.SetRequest{Key: key, Value: value})
 	return err
 }
 
-func (g *GrpcTransport) DeleteKey(node *api.Node, key string) error {
-	client, err := g.getConn(node.Addr)
+func (gt *GrpcTransport) DeleteKey(node *api.Node, key string) error {
+	client, err := gt.getConn(node.Addr)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
+	conntx, cancel := context.WithTimeout(context.Background(), gt.timeout)
 	defer cancel()
-	_, err = client.XDelete(ctx, &api.DeleteRequest{Key: key})
+	_, err = client.XDelete(conntx, &api.DeleteRequest{Key: key})
 	return err
 }
 
-func (g *GrpcTransport) RequestKeys(node *api.Node, from, to []byte) ([]*api.KV, error) {
-	client, err := g.getConn(node.Addr)
+func (gt *GrpcTransport) RequestKeys(node *api.Node, from, to []byte) ([]*api.KV, error) {
+	client, err := gt.getConn(node.Addr)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
+	conntx, cancel := context.WithTimeout(context.Background(), gt.timeout)
 	defer cancel()
 	val, err := client.XRequestKeys(
-		ctx, &api.RequestKeysRequest{From: from, To: to},
+		conntx, &api.RequestKeysRequest{From: from, To: to},
 	)
 	if err != nil {
 		return nil, err
@@ -365,16 +362,16 @@ func (g *GrpcTransport) RequestKeys(node *api.Node, from, to []byte) ([]*api.KV,
 	return val.Values, nil
 }
 
-func (g *GrpcTransport) DeleteKeys(node *api.Node, keys []string) error {
-	client, err := g.getConn(node.Addr)
+func (gt *GrpcTransport) DeleteKeys(node *api.Node, keys []string) error {
+	client, err := gt.getConn(node.Addr)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), g.timeout)
+	conntx, cancel := context.WithTimeout(context.Background(), gt.timeout)
 	defer cancel()
 	_, err = client.XMultiDelete(
-		ctx, &api.MultiDeleteRequest{Keys: keys},
+		conntx, &api.MultiDeleteRequest{Keys: keys},
 	)
 	return err
 }

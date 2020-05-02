@@ -29,9 +29,8 @@ func randStabilize(min, max time.Duration) time.Duration {
 	if max < min {
 		// Catch if min > max
 		return min
-	} else {
-		return time.Duration((r * float64(max-min)) + float64(min))
 	}
+	return time.Duration((r * float64(max-min)) + float64(min))
 }
 
 // check if key is between a and b, right inclusive
@@ -42,12 +41,12 @@ func keyBetwIncludeRight(key, a, b []byte) bool {
 // Checks if a key is STRICTLY between two ID's exclusively
 func between(key, a, b []byte) bool {
 	switch bytes.Compare(a, b) {
+	case 0:
+		return bytes.Compare(a, key) != 0
 	case 1:
 		return bytes.Compare(a, key) == -1 || bytes.Compare(b, key) >= 0
 	case -1:
 		return bytes.Compare(a, key) == -1 && bytes.Compare(b, key) >= 0
-	case 0:
-		return bytes.Compare(a, key) != 0
 	}
 	return false
 }

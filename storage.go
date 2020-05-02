@@ -33,8 +33,8 @@ func NewMapStore(hashFunc func() hash.Hash) Storage {
 }
 
 // hashKey generates the hash of a given key with the function used in the mapStore object
-func (a *mapStore) hashKey(key string) ([]byte, error) {
-	h := a.Hash()
+func (storeptr *mapStore) hashKey(key string) ([]byte, error) {
+	h := storeptr.Hash()
 	if _, err := h.Write([]byte(key)); err != nil {
 		return nil, err
 	}
@@ -43,8 +43,8 @@ func (a *mapStore) hashKey(key string) ([]byte, error) {
 }
 
 // Get performs a direct retrieval from the map of key-values to get the bytearray representation
-func (a *mapStore) Get(key string) ([]byte, error) {
-	val, ok := a.data[key]
+func (storeptr *mapStore) Get(key string) ([]byte, error) {
+	val, ok := storeptr.data[key]
 	if !ok {
 		return nil, ERR_KEY_NOT_FOUND
 	}
@@ -52,14 +52,14 @@ func (a *mapStore) Get(key string) ([]byte, error) {
 }
 
 // Set adds a key to the mapStore.s
-func (a *mapStore) Set(key, value string) error {
-	a.data[key] = value
+func (storeptr *mapStore) Set(key, value string) error {
+	storeptr.data[key] = value
 	return nil
 }
 
 // Delete removes a given key-value pair from the mapStore by the given key.
-func (a *mapStore) Delete(key string) error {
-	delete(a.data, key)
+func (storeptr *mapStore) Delete(key string) error {
+	delete(storeptr.data, key)
 	return nil
 }
 
@@ -70,17 +70,15 @@ func (storeptr *mapStore) Between(from []byte, to []byte) ([]*api.KV, error) {
 	for key, val := range storeptr.data {
 		// generate hash of each key
 		hashedKey, err := storeptr.hashKey(key)
-		if err != nil {
-			continue
-		}
-
-		// check if any of the hashed keys match the search range; add if it does to returned slice
-		if keyBetwIncludeRight(hashedKey, from, to) {
-			pair := &api.KV{
-				Key:   key,
-				Value: val,
+		if err == nil {
+			// check if any of the hashed keys match the search range; add if it does to returned slice
+			if keyBetwIncludeRight(hashedKey, from, to) {
+				pair := &api.KV{
+					Key:   key,
+					Value: val,
+				}
+				betwVals = append(betwVals, pair)
 			}
-			betwVals = append(vals, pair)
 		}
 	}
 	// Return all values that are between the given byte sets (hash-value wise)
@@ -88,9 +86,9 @@ func (storeptr *mapStore) Between(from []byte, to []byte) ([]*api.KV, error) {
 }
 
 // MDelete allows users to delete more than one key by providing multiple strings
-func (a *mapStore) MDelete(keys ...string) error {
-	for _, k := range keys {
-		delete(a.data, k)
+func (storeptr *mapStore) MDelete(keys ...string) error {
+	for _, key := range keys {
+		delete(storeptr.data, key)
 	}
 	return nil
 }
