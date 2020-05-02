@@ -20,17 +20,19 @@ func bytesEqual(a, b []byte) bool {
 
 func isPowerOfTwo(num int) bool {
 	nonZero := (num != 0)
-	evenBits := (num&(num) - 1) == 0
+	evenBits := (num & (num - 1)) == 0
 	return nonZero && evenBits
 }
 
 func randStabilize(min, max time.Duration) time.Duration {
-	r := rand.Float64()
+	random := rand.Float64()
 	if max < min {
 		// Catch if min > max
 		return min
 	}
-	return time.Duration((r * float64(max-min)) + float64(min))
+	delta := float64(max - min)
+	randDuration := (random * delta) + float64(min)
+	return time.Duration(randDuration)
 }
 
 // check if key is between a and b, right inclusive
