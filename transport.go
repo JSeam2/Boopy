@@ -82,8 +82,8 @@ func NewGrpcTransport(config *Config) (*GrpcTransport, error) {
 	// Setup the transport
 	grp := &GrpcTransport{
 		sock:    tcpListener.(*net.TCPListener),
-		timeout: config.Timeout,
-		maxIdle: config.MaxIdle,
+		timeout: config.MaxTimeoutDuration,
+		maxIdle: config.MaxIdleDuration,
 		pool:    pool,
 		config:  config,
 	}

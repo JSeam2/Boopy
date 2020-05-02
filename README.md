@@ -1,13 +1,13 @@
 # Boopy
-Byzantine Fault Tolerant Distributed Hash Table implemented in Golang
+Chord Hash Table implemented in Golang with a frontend interface.
 
-# Reference
-1. [Making Chord Robust to Byzantine Attacks](https://www.cs.unm.edu/~saia/papers/swarm.pdf)
+More instructions found in `/frontend` and `/run`.
 
-1. [Hosting Byzantine Fault Tolerant Services on a Chord Ring](https://arxiv.org/abs/1006.3465)
-
+# References
 1. [Donut: A Robust Distributed Hash Table based on Chord](http://alevy.github.io/donut/donut.pdf)
 
 1. [Sample chord implementation](https://github.com/arriqaaq/chord)
 
 1. [Toy Koorde DHT](https://github.com/Kubuxu/go-toy-koorde-dht)
+
+1. [GMaj](https://github.com/r-medina/gmaj)

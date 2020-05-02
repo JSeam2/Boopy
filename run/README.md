@@ -31,6 +31,13 @@ go build node2.go
 go build node3.go
 ```
 
+1. To spawn nodes easily and kill them easily after done run
+```
+python initialize.py
+
+// Press CTRL+C to kill nodes
+```
+
 # REST API
 The REST endpoints are found in `boop_node.go`
 

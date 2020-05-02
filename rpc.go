@@ -36,8 +36,8 @@ func (n *Node) setPredecessorRPC(node *api.Node, pred *api.Node) error {
 	return n.transport.SetPredecessor(node, pred)
 }
 
-// notifyRPC notifies a remote node that pred is its predecessor.
-func (n *Node) notifyRPC(node, pred *api.Node) error {
+// notify notifies a remote node that pred is its predecessor.
+func (n *Node) notify(node, pred *api.Node) error {
 	return n.transport.Notify(node, pred)
 }
 

@@ -1,9 +1,10 @@
 package boopy
 
 import (
-	"github.com/jseam2/boopy/api"
-	"fmt"
+	"log"
 	"math/big"
+
+	"github.com/jseam2/boopy/api"
 )
 
 type fingerTable []*fingerEntry
@@ -58,20 +59,28 @@ func fingerID(n []byte, i int, m int) []byte {
 	return idBigInt.Bytes()
 }
 
-// called periodically. refreshes finger table entries.
-// next stores the index of the next finger to fix.
+// n.fix_fingers()
+//   i = random index > 1 into finger []
+//   finger[i].node = find_successor(finger[i].start)
 func (n *Node) fixFinger(next int) int {
-	nextNum := (next + 1) % n.cnf.HashSize
+	nextIndex := next + 1
+	// use hashSize to figure out the next num
+	nextNum := nextIndex % n.cnf.HashSize
+
+	// Use hash to find the next entry in the finger tables
 	nextHash := fingerID(n.Id, next, n.cnf.HashSize)
+
+	// Find successor function
 	successor, err := n.findSuccessor(nextHash)
-	if err != nil || successor == nil {
-		fmt.Println("error: ", err, successor)
-		fmt.Printf("finger lookup failed %x %x \n", n.Id, nextHash)
-		// TODO: Check how to handle retry, passing ahead for now
+
+	if err != nil {
+		log.Printf("Fix finger failed, unable to find successor")
 		return nextNum
 	}
 
 	finger := newFingerEntry(nextHash, successor)
+
+	// set finger table
 	n.ftMtx.Lock()
 	n.fingerTable[next] = finger
 	n.ftMtx.Unlock()

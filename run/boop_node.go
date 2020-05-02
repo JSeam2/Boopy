@@ -63,8 +63,8 @@ func createNode(id string, addr string, sister *api.Node) (*boopy.Node, error) {
 	cnf := boopy.DefaultConfig()
 	cnf.Id = id
 	cnf.Addr = addr
-	cnf.Timeout = 10 * time.Millisecond
-	cnf.MaxIdle = 100 * time.Millisecond
+	cnf.MaxTimeoutDuration = 10 * time.Millisecond
+	cnf.MaxIdleDuration = 100 * time.Millisecond
 
 	// Passthrough to the boopy library for newNode
 	n, err := boopy.NewNode(cnf, sister)

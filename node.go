@@ -2,7 +2,6 @@ package boopy
 
 import (
 	"crypto/sha1"
-	"fmt"
 	"hash"
 	"log"
 	"math/big"
@@ -38,23 +37,19 @@ type Config struct {
 	ServerOpts []grpc.ServerOption
 	DialOpts   []grpc.DialOption
 
-	StabilizeMin time.Duration // Minimum stabilization time
-	StabilizeMax time.Duration // Maximum stabilization time
-	Timeout      time.Duration
-	MaxIdle      time.Duration
-	Hash         func() hash.Hash // Hash function to use (for generating node ID, )
-	HashSize     int              // number of fingers in finger table
-}
-
-func (c *Config) Validate() error {
-	// hashsize shouldnt be less than hash func size
-	return nil
+	Hash               func() hash.Hash // Hash function to use (for generating node ID, )
+	HashSize           int              // number of fingers in finger table
+	MaxTimeoutDuration time.Duration
+	MaxIdleDuration    time.Duration
 }
 
 // Create a node entry, for storage in finger table
 func NewInode(id string, addr string) *api.Node {
 	h := sha1.New()
-	if _, err := h.Write([]byte(id)); err != nil {
+	_, err := h.Write([]byte(id))
+
+	if err != nil {
+		log.Printf("Error creating inode. Problems with hash function")
 		return nil
 	}
 	val := h.Sum(nil)
@@ -67,9 +62,6 @@ func NewInode(id string, addr string) *api.Node {
 
 // Create a new node in the Chord. Check if node with same id already exists
 func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
-	if err := cnf.Validate(); err != nil {
-		return nil, err
-	}
 	var nodeID string
 
 	node := &Node{
@@ -85,6 +77,7 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 	}
 
 	id, err := node.hashKey(nodeID)
+
 	if err != nil {
 		return nil, err
 	}
@@ -99,6 +92,7 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 	// Start RPC server (start listening function, )
 	// transport is a struct that contains grpc server and supplementary attributes (like timeout etc)
 	transport, err := NewGrpcTransport(cnf)
+
 	if err != nil {
 		return nil, err
 	}
@@ -110,52 +104,21 @@ func NewNode(cnf *Config, joinNode *api.Node) (*Node, error) {
 
 	// find the closest node clockwise from the id of this node (i.e. successor node)
 	// adds successor to the 'successor' attribute of the node
-	if err := node.join(joinNode); err != nil {
+	nodeJoinErr := node.join(joinNode)
+
+	if nodeJoinErr != nil {
+		log.Printf("Error joining node")
 		return nil, err
 	}
 
-	// Peridoically fix finger tables.
-	// periodically runs down finger table, recreating finger entries for each finger table ID
-	go func() {
-		next := 0
-		timer := time.NewTicker(100 * time.Millisecond)
-		for {
-			select {
-			case <-timer.C:
-				// found in finger.go,
-				next = node.fixFinger(next)
-			case <-node.shutdownCh:
-				timer.Stop()
-				return
-			}
-		}
-	}()
-	// Stabilize nodes every second
-	go func() {
-		timer := time.NewTicker(500 * time.Millisecond)
-		for {
-			select {
-			case <-timer.C:
-				node.stabilize()
-			case <-node.shutdownCh:
-				timer.Stop()
-				return
-			}
-		}
-	}()
-	// Check predecessor failed every 10 seconds
-	go func() {
-		ticker := time.NewTicker(10 * time.Second)
-		for {
-			select {
-			case <-ticker.C:
-				node.checkPredecessor()
-			case <-node.shutdownCh:
-				ticker.Stop()
-				return
-			}
-		}
-	}()
+	// run routines
+	// Fix fingers every 500 ms
+	go node.fixFingerRoutine(500)
+
+	// Stablize every 1000ms
+	go node.stabilizeRoutine(1000)
+	// Check predecessor fail every 5000 ms
+	go node.checkPredecessorRoutine(2000)
 
 	return node, nil
 }
@@ -267,7 +230,7 @@ func (n *Node) Stop() {
 		n.transferKeysFromNode(pred, succ)
 		predErr := n.setPredecessorRPC(succ, pred)
 		succErr := n.setSuccessorRPC(pred, succ)
-		fmt.Println("stop errors: ", predErr, succErr)
+		log.Println("stop errors: ", predErr, succErr)
 	}
 
 	n.transport.Stop()
@@ -314,9 +277,9 @@ func (n *Node) delete(key string) error {
 
 func (n *Node) transferKeys(pred, succ *api.Node) {
 
-	keys, err := n.requestKeys(pred, succ)
+	keys, _ := n.requestKeys(pred, succ)
 	if len(keys) > 0 {
-		fmt.Println("transfering: ", keys, err)
+		log.Printf("Transfer Keys: %+v", keys)
 	}
 	delKeyList := make([]string, 0, 10)
 	// store the keys in current node
@@ -338,7 +301,7 @@ func (n *Node) transferKeys(pred, succ *api.Node) {
 func (n *Node) transferKeysFromNode(pred, succ *api.Node) {
 	keys, err := n.storage.Between(pred.Id, succ.Id)
 	if len(keys) > 0 {
-		fmt.Println("transfering: ", keys, succ, err)
+		log.Println("transfering: ", keys, succ, err)
 	}
 	delKeyList := make([]string, 0, 10)
 	// store the keys in current node
@@ -348,7 +311,7 @@ func (n *Node) transferKeysFromNode(pred, succ *api.Node) {
 		}
 		err := n.setKeyRPC(succ, item.Key, item.Value)
 		if err != nil {
-			fmt.Println("error transfering key: ", item.Key, succ.Addr)
+			log.Println("error transfering key: ", item.Key, succ.Addr)
 		}
 		delKeyList = append(delKeyList, item.Key)
 	}
@@ -440,15 +403,22 @@ func (n *Node) closestPrecedingNode(id []byte) *api.Node {
 	return curr
 }
 
+// Pseudocode in paper
+// n.stabilize()
+//   x = successor.predecessor
+//   if (x in (n, successor))
+//     successor = x
+//   successor.notify(n)
 func (n *Node) stabilize() {
 	n.succMtx.RLock()
 
 	succ := n.successor
 	if succ == nil {
-		n.succMtx.RUnlock()
 		log.Printf("No successor found")
+		n.succMtx.RUnlock()
 		return
 	}
+
 	n.succMtx.RUnlock()
 
 	pred, err := n.getPredecessorRPC(succ)
@@ -463,7 +433,9 @@ func (n *Node) stabilize() {
 		n.successor = pred
 		n.succMtx.Unlock()
 	}
-	n.notifyRPC(succ, n.Node)
+
+	// call notify
+	n.notify(succ, n.Node)
 }
 
 func (n *Node) checkPredecessor() {
@@ -474,7 +446,7 @@ func (n *Node) checkPredecessor() {
 	if pred != nil {
 		err := n.transport.CheckPredecessor(pred)
 		if err != nil {
-			fmt.Println("Predecessor has an error: ", err)
+			log.Println("Predecessor has an error: ", err)
 			n.predMtx.Lock()
 			n.predecessor = nil
 			n.predMtx.Unlock()
