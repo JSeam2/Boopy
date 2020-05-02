@@ -194,10 +194,10 @@ type Node struct {
 	lastStablized time.Time
 }
 
-func (n *Node) hashKey(key string) ([]byte, error) {
+func (node *Node) hashKey(key string) ([]byte, error) {
 	// uses existing hash function in Node to retrieve hash from key
 
-	h := n.cnf.Hash()
+	h := node.cnf.Hash()
 	if _, err := h.Write([]byte(key)); err != nil {
 		return nil, err
 	}
@@ -207,32 +207,32 @@ func (n *Node) hashKey(key string) ([]byte, error) {
 	return val, nil
 }
 
-func (n *Node) join(joinNode *api.Node) error {
+func (node *Node) join(joinNode *api.Node) error {
 	// First check if node already present in the circle
 	// Join this node to the same chord ring as parent
 	var foo *api.Node
 	// // Ask if our id already exists on the ring.
 	if joinNode != nil {
-		remoteNode, err := n.findSuccessorRPC(joinNode, n.Id)
+		remoteNode, err := node.findSuccessorRPC(joinNode, node.Id)
 		if err != nil {
 			return err
 		}
 
-		if isEqual(remoteNode.Id, n.Id) {
+		if isEqual(remoteNode.Id, node.Id) {
 			return ERR_NODE_EXISTS
 		}
 		foo = joinNode
 	} else {
-		foo = n.Node
+		foo = node.Node
 	}
 
-	succ, err := n.findSuccessorRPC(foo, n.Id)
+	succ, err := node.findSuccessorRPC(foo, node.Id)
 	if err != nil {
 		return err
 	}
-	n.succMtx.Lock()
-	n.successor = succ
-	n.succMtx.Unlock()
+	node.succMtx.Lock()
+	node.successor = succ
+	node.succMtx.Unlock()
 
 	return nil
 }
@@ -241,29 +241,28 @@ func (n *Node) join(joinNode *api.Node) error {
 	Public storage implementation
 */
 
-func (n *Node) Find(nodeKey string) (*api.Node, error) {
-	return n.locate(nodeKey)
+func (node *Node) Find(nodeKey string) (*api.Node, error) {
+	return node.locate(nodeKey)
 }
-
-func (n *Node) Get(nodeKey string) ([]byte, error) {
-	return n.get(nodeKey)
+func (node *Node) Get(nodeKey string) ([]byte, error) {
+	return node.get(nodeKey)
 }
-func (n *Node) Set(nodeKey, value string) error {
-	return n.set(nodeKey, value)
+func (node *Node) Set(nodeKey, value string) error {
+	return node.set(nodeKey, value)
 }
-func (n *Node) Delete(nodeKey string) error {
-	return n.delete(nodeKey)
+func (node *Node) Delete(nodeKey string) error {
+	return node.delete(nodeKey)
 }
 
 /*
 	Finds the node for the key
 */
-func (n *Node) locate(nodeKey string) (*api.Node, error) {
-	id, err := n.hashKey(nodeKey)
+func (node *Node) locate(nodeKey string) (*api.Node, error) {
+	id, err := node.hashKey(nodeKey)
 	if err != nil {
 		return nil, err
 	}
-	succ, err := n.findSuccessor(id)
+	succ, err := node.findSuccessor(id)
 	return succ, err
 }
 
@@ -320,9 +319,9 @@ func (n *Node) transferKeys(pred, succ *api.Node) {
 
 }
 
-func (n *Node) moveKeysFromLocal(pred, succ *api.Node) {
+func (node *Node) moveKeysFromLocal(pred, succ *api.Node) {
 
-	keys, err := n.storage.Between(pred.Id, succ.Id)
+	keys, err := node.storage.Between(pred.Id, succ.Id)
 	if len(keys) > 0 {
 		fmt.Println("transfering: ", keys, succ, err)
 	}
@@ -332,7 +331,7 @@ func (n *Node) moveKeysFromLocal(pred, succ *api.Node) {
 		if item == nil {
 			continue
 		}
-		err := n.setKeyRPC(succ, item.Key, item.Value)
+		err := node.setKeyRPC(succ, item.Key, item.Value)
 		if err != nil {
 			fmt.Println("error transfering key: ", item.Key, succ.Addr)
 		}
@@ -341,7 +340,7 @@ func (n *Node) moveKeysFromLocal(pred, succ *api.Node) {
 	// delete the keys from the successor node, as current node
 	// is responsible for the keys
 	if len(delKeyList) > 0 {
-		n.deleteKeys(succ, delKeyList)
+		node.deleteKeys(succ, delKeyList)
 	}
 
 }
@@ -366,12 +365,12 @@ func (n *Node) requestKeys(pred, succ *api.Node) ([]*api.KV, error) {
 	First check if key present in local table, if not
 	then look for how to travel in the ring
 */
-func (n *Node) findSuccessor(id []byte) (*api.Node, error) {
+func (node *Node) findSuccessor(id []byte) (*api.Node, error) {
 	// Check if lock is needed throughout the process
-	n.succMtx.RLock()
-	defer n.succMtx.RUnlock()
-	curr := n.Node
-	succ := n.successor
+	node.succMtx.RLock()
+	defer node.succMtx.RUnlock()
+	curr := node.Node
+	succ := node.successor
 
 	if succ == nil {
 		return curr, nil
@@ -382,15 +381,15 @@ func (n *Node) findSuccessor(id []byte) (*api.Node, error) {
 	if betweenRightIncl(id, curr.Id, succ.Id) {
 		return succ, nil
 	} else {
-		pred := n.closestPrecedingNode(id)
+		pred := node.closestPrecedingNode(id)
 		/*
 			NOT SURE ABOUT THIS, RECHECK from paper!!!
 			if preceeding node and current node are the same,
 			store the key on this node
 		*/
 
-		if isEqual(pred.Id, n.Id) {
-			succ, err = n.getSuccessorRPC(pred)
+		if isEqual(pred.Id, node.Id) {
+			succ, err = node.getSuccessorRPC(pred)
 			if err != nil {
 				return nil, err
 			}
@@ -401,7 +400,7 @@ func (n *Node) findSuccessor(id []byte) (*api.Node, error) {
 			return succ, nil
 		}
 
-		succ, err := n.findSuccessorRPC(pred, id)
+		succ, err := node.findSuccessorRPC(pred, id)
 		// fmt.Println("successor to closest node ", succ, err)
 		if err != nil {
 			return nil, err
@@ -417,15 +416,15 @@ func (n *Node) findSuccessor(id []byte) (*api.Node, error) {
 }
 
 // Fig 5 implementation for closest_preceding_node
-func (n *Node) closestPrecedingNode(id []byte) *api.Node {
-	n.predMtx.RLock()
-	defer n.predMtx.RUnlock()
+func (node *Node) closestPrecedingNode(id []byte) *api.Node {
+	node.predMtx.RLock()
+	defer node.predMtx.RUnlock()
 
-	curr := n.Node
+	curr := node.Node
 
-	m := len(n.fingerTable) - 1
+	m := len(node.fingerTable) - 1
 	for i := m; i >= 0; i-- {
-		f := n.fingerTable[i]
+		f := node.fingerTable[i]
 		if f == nil || f.Node == nil {
 			continue
 		}
