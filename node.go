@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func DefaultConfig() *Config {
+func BaseConfig() *Config {
 	n := &Config{
 		Hash:     sha1.New,
 		DialOpts: make([]grpc.DialOption, 0, 5),
